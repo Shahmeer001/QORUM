@@ -1,0 +1,15 @@
+{
+  "market": "US",
+  "symbol": "SPY",
+  "baseline": {
+    "total_trades": 15000,
+    "win_rate_pct": 53.2,
+    "high_profit_rate_pct": 11.5,
+    "big_loss_rate_pct": 8.9
+  },
+  "macro_factors": {
+    "real_yield_correlation": -0.68,
+    "spx_breadth_threshold": 40.0,
+    "vix_threshold": 22.0
+  }
+}

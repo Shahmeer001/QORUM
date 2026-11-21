@@ -1,0 +1,61 @@
+# QUORUM Market Registry Configuration
+# One row = one market agent
+
+markets:
+  PSX:
+    id: PSX
+    name: Pakistan Stock Exchange
+    region: Emerging equities · Karachi
+    assets:
+      - OGDC
+      - HBL
+      - LUCK
+      - ENGRO
+    open: false
+    why: Local risk appetite and PKR-linked flows signal regional sentiment.
+
+  US:
+    id: US
+    name: US Equities
+    region: Developed equities · NYSE/NASDAQ
+    assets:
+      - AAPL
+      - SPY
+      - MSFT
+      - GLD
+    open: false
+    why: Global risk-on/off driver; real yields move gold and crypto.
+
+  FOREX:
+    id: FOREX
+    name: Foreign Exchange
+    region: Currencies · 24/5 OTC
+    assets:
+      - EURUSD
+      - USDPKR
+      - DXY
+      - USDJPY
+    open: true
+    why: Dollar strength directly prices gold and commodities.
+
+  GOLD:
+    id: GOLD
+    name: Gold
+    region: Commodity · Safe haven
+    assets:
+      - XAUUSD
+      - GLD
+      - IAU
+    open: false
+    why: Classic hedge; reacts to inflation, yields and fear.
+
+  CRYPTO:
+    id: CRYPTO
+    name: Crypto
+    region: Digital assets · 24/7
+    assets:
+      - BTC-USD
+      - ETH-USD
+      - SOL-USD
+    open: true
+    why: High-beta risk gauge; competes with gold as 'digital gold'.

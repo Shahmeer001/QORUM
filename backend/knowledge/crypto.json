@@ -1,0 +1,24 @@
+{
+  "market": "CRYPTO",
+  "symbol": "BTCUSDT",
+  "baseline": {
+    "total_trades": 40000,
+    "win_rate_pct": 51.8,
+    "high_profit_rate_pct": 12.8,
+    "big_loss_rate_pct": 11.4
+  },
+  "rsi_rule": {
+    "buy_zone": [20, 30],
+    "sell_zone": [70, 80],
+    "trades_bought_in_zone": 2150,
+    "win_rate_pct_when_bought_in_zone": 58.6,
+    "avg_roi_pct_when_bought_in_zone": 4.12
+  },
+  "patterns": {
+    "D-D-D": { "high_rate_pct": 18.4, "lift": 1.43, "sample_count": 1420 },
+    "U-U-U": { "high_rate_pct": 16.2, "lift": 1.26, "sample_count": 1510 },
+    "D-S-U": { "high_rate_pct": 15.1, "lift": 1.18, "sample_count": 890 },
+    "U-S-D": { "high_rate_pct": 10.9, "lift": 0.85, "sample_count": 920 },
+    "D-D-U": { "high_rate_pct": 17.0, "lift": 1.32, "sample_count": 1100 }
+  }
+}
