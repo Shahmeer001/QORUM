@@ -1,11 +1,14 @@
 """
 QUORUM Central Settings
 No magic numbers: all thresholds, caps, and parameters are defined here.
+Handles time zone-aware decision cutoff for US Close across Daylight Saving Time.
 """
 from __future__ import annotations
 
+from datetime import datetime, time, timezone
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -41,3 +44,18 @@ PATTERN_LENGTH = 3             # 3 candles (27 possible patterns: U-S-D combinat
 
 # Modes
 VALID_MODES = ["single", "silent", "debate"]
+
+# US Equity Close: Defined by timezone America/New_York at 4:00 PM (16:00),
+# NOT a fixed UTC hour, so daylight saving time shifts are accurately handled.
+US_TIMEZONE = ZoneInfo("America/New_York")
+US_CLOSE_TIME = time(16, 0, 0)
+
+
+def get_us_close_utc(day_str: str) -> datetime:
+    """
+    Computes the exact UTC timestamp of the US market close for a given calendar day.
+    Automatically accounts for Eastern Daylight Time (EDT: UTC-4) vs Eastern Standard Time (EST: UTC-5).
+    """
+    dt = datetime.strptime(day_str, "%Y-%m-%d").date()
+    local_close = datetime.combine(dt, US_CLOSE_TIME, tzinfo=US_TIMEZONE)
+    return local_close.astimezone(timezone.utc)

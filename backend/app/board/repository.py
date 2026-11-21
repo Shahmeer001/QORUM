@@ -9,7 +9,8 @@ from app.domain.models import Message
 class BoardRepository(ABC):
     """
     Append-only repository for debate and recommendation messages.
-    No updates or deletions allowed — preserves full audit trail.
+    Interface strictly allows add and read operations only.
+    No update or delete operations are permitted.
     """
 
     @abstractmethod

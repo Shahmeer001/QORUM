@@ -28,6 +28,14 @@ class Role(str, Enum):
     RELATED = "RELATED"
 
 
+class MarketId(str, Enum):
+    CRYPTO = "CRYPTO"
+    US = "US"
+    PSX = "PSX"
+    FOREX = "FOREX"
+    GOLD = "GOLD"
+
+
 class RiskStatus(str, Enum):
     APPROVED = "Approved"
     OVERRIDDEN = "Overridden"

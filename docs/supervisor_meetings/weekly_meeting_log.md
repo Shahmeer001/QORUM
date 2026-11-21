@@ -32,3 +32,12 @@
   - Tested Single Agent vs Silent Consensus vs Debate modes.
   - Verified that debate mode reduces false breakout trades during high-volatility regimes.
   - Finalized deliverables, system test suites, and documentation.
+
+## Meeting 06 — Operational Timing & Design Locking (This Week)
+- **Date:** 2026-11-22
+- **Key Decision Locked:**
+  - Replaced intraday alternating posting with a single daily decision time just after the US market close (4:00 PM Eastern / `America/New_York`).
+  - **Data Cut-off Policy:** Every market adapter strictly enforces that candles closing after the US close decision cutoff time are filtered out.
+  - **Round-Level Visibility Policy:** In debate round $r$, an agent can see all messages from earlier rounds ($< r$) and its own messages from round $r$. Messages from other agents in round $r$ remain hidden until round $r$ finishes.
+  - **Audit Immutability:** Shared board repositories are strictly append-and-read only; any update or deletion attempt is rejected.
+  - **Supervisor Sign-off:** Confirmed Daylight Saving Time (EDT vs EST) dynamic UTC offset handling for US close timing.

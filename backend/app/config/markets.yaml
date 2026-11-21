@@ -5,57 +5,77 @@ markets:
   PSX:
     id: PSX
     name: Pakistan Stock Exchange
+    symbol: KSE100
     region: Emerging equities · Karachi
+    time_zone: Asia/Karachi
+    session_close_time: "15:30"
+    active: true
+    open: false
     assets:
       - OGDC
       - HBL
       - LUCK
       - ENGRO
-    open: false
     why: Local risk appetite and PKR-linked flows signal regional sentiment.
 
   US:
     id: US
     name: US Equities
+    symbol: SPY
     region: Developed equities · NYSE/NASDAQ
+    time_zone: America/New_York
+    session_close_time: "16:00"
+    active: true
+    open: false
     assets:
       - AAPL
       - SPY
       - MSFT
       - GLD
-    open: false
     why: Global risk-on/off driver; real yields move gold and crypto.
 
   FOREX:
     id: FOREX
     name: Foreign Exchange
+    symbol: EURUSD
     region: Currencies · 24/5 OTC
+    time_zone: Europe/London
+    session_close_time: "17:00"
+    active: true
+    open: true
     assets:
       - EURUSD
       - USDPKR
       - DXY
       - USDJPY
-    open: true
     why: Dollar strength directly prices gold and commodities.
 
   GOLD:
     id: GOLD
     name: Gold
+    symbol: XAUUSD
     region: Commodity · Safe haven
+    time_zone: UTC
+    session_close_time: "17:00"
+    active: true
+    open: false
     assets:
       - XAUUSD
       - GLD
       - IAU
-    open: false
     why: Classic hedge; reacts to inflation, yields and fear.
 
   CRYPTO:
     id: CRYPTO
     name: Crypto
+    symbol: BTCUSDT
     region: Digital assets · 24/7
+    time_zone: UTC
+    session_close_time: "23:59"
+    active: true
+    open: true
     assets:
       - BTC-USD
       - ETH-USD
       - SOL-USD
-    open: true
     why: High-beta risk gauge; competes with gold as 'digital gold'.
