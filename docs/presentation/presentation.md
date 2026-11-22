@@ -1,4 +1,4 @@
-# QUORUM: Final Presentation & Defense Slides
+# QUORUM: Final Presentation & Defense Guide
 # Cross-Market Multi-Agent Financial Decision Architecture
 
-Refer to [c:\Users\hp\QOURUM\presentation.md](file:///c:/Users/hp/QOURUM/presentation.md) for the complete presentation deck and technical reference guide.
+Refer to [presentation.md](file:///c:/Users/hp/QOURUM/presentation.md) in the project root for the complete presentation and reference guide.
