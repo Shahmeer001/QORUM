@@ -54,6 +54,10 @@ def main() -> None:
     for a in result.agents:
         print(f"  [{a.market:6}] {a.final.value:5} ({a.confidence:.0f}% conf) - {a.reason}")
 
+    print("\n--- Board Message Thread ---")
+    for m in result.messages:
+        print(f"  [Round {m.round}] {m.from_market:6} -> {m.to_market:6} | {m.msg_type.value:10} | {m.position.value:5} ({m.confidence:.0f}%) | {m.reason}")
+
 
 if __name__ == "__main__":
     main()

@@ -53,6 +53,14 @@ class SqlBoardRepository(BoardRepository):
         )
         return [self._to_model(r) for r in rows]
 
+    def update_message(self, message: Message) -> None:
+        """Reject attempts to edit or mutate existing messages."""
+        raise PermissionError("SqlBoardRepository is append-only: message updates are strictly prohibited.")
+
+    def delete_message(self, message_id: str) -> None:
+        """Reject attempts to delete messages."""
+        raise PermissionError("SqlBoardRepository is append-only: message deletions are strictly prohibited.")
+
     def _to_model(self, r: MessageTable) -> Message:
         ev = json.loads(r.evidence_json) if r.evidence_json else []
         return Message(

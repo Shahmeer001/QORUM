@@ -83,6 +83,19 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_session_round ON messages(session_id, round);
 
+-- Board Immutability Triggers: Reject edits and deletes at the SQLite engine level
+CREATE TRIGGER IF NOT EXISTS prevent_message_update
+BEFORE UPDATE ON messages
+BEGIN
+    SELECT RAISE(ABORT, 'QUORUM Board: Message updates are prohibited (append-only board).');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_message_delete
+BEFORE DELETE ON messages
+BEGIN
+    SELECT RAISE(ABORT, 'QUORUM Board: Message deletions are prohibited (append-only board).');
+END;
+
 -- Supervisor Events Log
 CREATE TABLE IF NOT EXISTS supervisor_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

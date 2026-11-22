@@ -1,24 +1,692 @@
 {
-  "market": "CRYPTO",
-  "symbol": "BTCUSDT",
+  "generated_at": "2026-11-22T13:21:53+00:00",
+  "data": {
+    "source": "Binance Spot snapshot (official archives + checksums)",
+    "symbol": "BTCUSDT",
+    "interval_minutes": 5,
+    "study_start_utc": "2025-11-10 19:00:00+00:00",
+    "study_end_utc_excluded": "2026-11-10 19:00:00+00:00",
+    "study_start_pkt": "2025-11-11 00:00",
+    "study_end_pkt": "2026-11-11 00:00",
+    "study_months": 12,
+    "warmup_candles": 300,
+    "study_candles": 105120,
+    "rows": 105420,
+    "missing_candles": 0,
+    "built_at": "2026-11-22T13:21:14+00:00"
+  },
+  "how_to_read": {
+    "pattern": "U/S/D per candle vs previous close (S = within +-0.03%), oldest -> newest, candles BEFORE the buy/sell candle (last letter = candle just before it)",
+    "most_repeated": "patterns seen most often among the +10% trades (raw count + share)",
+    "high_rate_pct": "% of trades with this pattern that reached +10%",
+    "loss_rate_pct": "% of trades with this pattern that fell to -10% or worse",
+    "lift": "pattern rate / rate for all trades (1.0 = no better than random)",
+    "stable": "beat the baseline in both halves of the data",
+    "min_trades_per_pattern": 30
+  },
   "baseline": {
     "total_trades": 40000,
-    "win_rate_pct": 51.8,
-    "high_profit_rate_pct": 12.8,
-    "big_loss_rate_pct": 11.4
+    "win_rate_pct": 47.137,
+    "high_profit_rate_pct": 2.237,
+    "big_loss_rate_pct": 3.565
   },
   "rsi_rule": {
-    "buy_zone": [20, 30],
-    "sell_zone": [70, 80],
-    "trades_bought_in_zone": 2150,
-    "win_rate_pct_when_bought_in_zone": 58.6,
-    "avg_roi_pct_when_bought_in_zone": 4.12
+    "buy_zone": [
+      20,
+      30
+    ],
+    "sell_zone": [
+      70,
+      80
+    ],
+    "trades_bought_in_zone": 1298.0,
+    "win_rate_pct_when_bought_in_zone": 53.159,
+    "avg_roi_pct_when_bought_in_zone": 0.063
   },
   "patterns": {
-    "D-D-D": { "high_rate_pct": 18.4, "lift": 1.43, "sample_count": 1420 },
-    "U-U-U": { "high_rate_pct": 16.2, "lift": 1.26, "sample_count": 1510 },
-    "D-S-U": { "high_rate_pct": 15.1, "lift": 1.18, "sample_count": 890 },
-    "U-S-D": { "high_rate_pct": 10.9, "lift": 0.85, "sample_count": 920 },
-    "D-D-U": { "high_rate_pct": 17.0, "lift": 1.32, "sample_count": 1100 }
-  }
+    "buy_3candle": {
+      "patterns_seen": 27,
+      "patterns_with_enough_data": 27,
+      "most_repeated_before_high_profit": [
+        {
+          "pattern": "S-S-S",
+          "times_in_high_profit_trades": 103,
+          "share_of_high_profit_trades_pct": 11.508,
+          "times_seen_in_all_trades": 1796,
+          "high_rate_pct": 5.735,
+          "stable_good": false
+        },
+        {
+          "pattern": "D-D-D",
+          "times_in_high_profit_trades": 41,
+          "share_of_high_profit_trades_pct": 4.581,
+          "times_seen_in_all_trades": 2013,
+          "high_rate_pct": 2.037,
+          "stable_good": false
+        },
+        {
+          "pattern": "D-U-D",
+          "times_in_high_profit_trades": 41,
+          "share_of_high_profit_trades_pct": 4.581,
+          "times_seen_in_all_trades": 2304,
+          "high_rate_pct": 1.78,
+          "stable_good": false
+        },
+        {
+          "pattern": "U-D-U",
+          "times_in_high_profit_trades": 40,
+          "share_of_high_profit_trades_pct": 4.469,
+          "times_seen_in_all_trades": 2184,
+          "high_rate_pct": 1.832,
+          "stable_good": false
+        },
+        {
+          "pattern": "U-D-D",
+          "times_in_high_profit_trades": 39,
+          "share_of_high_profit_trades_pct": 4.358,
+          "times_seen_in_all_trades": 2189,
+          "high_rate_pct": 1.782,
+          "stable_good": false
+        }
+      ],
+      "best_for_high_profit": [
+        {
+          "pattern": "S-S-S",
+          "total": 1796,
+          "high_rate_pct": 5.735,
+          "loss_rate_pct": 2.561,
+          "avg_roi_pct": 0.663,
+          "high_lift": 2.563,
+          "loss_lift": 0.718,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "S-S-U",
+          "total": 1059,
+          "high_rate_pct": 3.494,
+          "loss_rate_pct": 2.172,
+          "avg_roi_pct": 0.313,
+          "high_lift": 1.562,
+          "loss_lift": 0.609,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "S-S-D",
+          "total": 1147,
+          "high_rate_pct": 3.313,
+          "loss_rate_pct": 2.703,
+          "avg_roi_pct": 0.042,
+          "high_lift": 1.481,
+          "loss_lift": 0.758,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "U-S-S",
+          "total": 1123,
+          "high_rate_pct": 3.206,
+          "loss_rate_pct": 3.117,
+          "avg_roi_pct": -0.091,
+          "high_lift": 1.433,
+          "loss_lift": 0.874,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "D-S-S",
+          "total": 1082,
+          "high_rate_pct": 2.957,
+          "loss_rate_pct": 2.957,
+          "avg_roi_pct": -0.06,
+          "high_lift": 1.322,
+          "loss_lift": 0.83,
+          "stable_good": false,
+          "stable_bad": false
+        }
+      ],
+      "avoid_high_loss": [
+        {
+          "pattern": "U-U-U",
+          "total": 1886,
+          "high_rate_pct": 2.015,
+          "loss_rate_pct": 4.719,
+          "avg_roi_pct": -0.534,
+          "high_lift": 0.9,
+          "loss_lift": 1.324,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "D-U-U",
+          "total": 2188,
+          "high_rate_pct": 1.645,
+          "loss_rate_pct": 4.479,
+          "avg_roi_pct": -0.435,
+          "high_lift": 0.735,
+          "loss_lift": 1.256,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "D-D-D",
+          "total": 2013,
+          "high_rate_pct": 2.037,
+          "loss_rate_pct": 4.173,
+          "avg_roi_pct": -0.429,
+          "high_lift": 0.91,
+          "loss_lift": 1.171,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "U-U-D",
+          "total": 2299,
+          "high_rate_pct": 1.653,
+          "loss_rate_pct": 4.132,
+          "avg_roi_pct": -0.386,
+          "high_lift": 0.739,
+          "loss_lift": 1.159,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "U-D-U",
+          "total": 2184,
+          "high_rate_pct": 1.832,
+          "loss_rate_pct": 4.121,
+          "avg_roi_pct": -0.393,
+          "high_lift": 0.819,
+          "loss_lift": 1.156,
+          "stable_good": false,
+          "stable_bad": false
+        }
+      ]
+    },
+    "buy_7candle": {
+      "patterns_seen": 2187,
+      "patterns_with_enough_data": 213,
+      "most_repeated_before_high_profit": [
+        {
+          "pattern": "S-S-S-S-S-S-S",
+          "times_in_high_profit_trades": 33,
+          "share_of_high_profit_trades_pct": 3.687,
+          "times_seen_in_all_trades": 287,
+          "high_rate_pct": 11.498,
+          "stable_good": false
+        },
+        {
+          "pattern": "S-S-S-S-S-S-U",
+          "times_in_high_profit_trades": 8,
+          "share_of_high_profit_trades_pct": 0.894,
+          "times_seen_in_all_trades": 66,
+          "high_rate_pct": 12.121,
+          "stable_good": false
+        },
+        {
+          "pattern": "D-S-S-S-S-S-S",
+          "times_in_high_profit_trades": 7,
+          "share_of_high_profit_trades_pct": 0.782,
+          "times_seen_in_all_trades": 51,
+          "high_rate_pct": 13.725,
+          "stable_good": false
+        },
+        {
+          "pattern": "S-S-D-S-S-S-S",
+          "times_in_high_profit_trades": 6,
+          "share_of_high_profit_trades_pct": 0.67,
+          "times_seen_in_all_trades": 53,
+          "high_rate_pct": 11.321,
+          "stable_good": false
+        },
+        {
+          "pattern": "S-S-S-S-D-S-S",
+          "times_in_high_profit_trades": 5,
+          "share_of_high_profit_trades_pct": 0.559,
+          "times_seen_in_all_trades": 49,
+          "high_rate_pct": 10.204,
+          "stable_good": true
+        }
+      ],
+      "best_for_high_profit": [
+        {
+          "pattern": "D-S-S-S-S-S-S",
+          "total": 51,
+          "high_rate_pct": 13.725,
+          "loss_rate_pct": 1.961,
+          "avg_roi_pct": 2.299,
+          "high_lift": 6.134,
+          "loss_lift": 0.55,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "S-S-S-S-S-S-U",
+          "total": 66,
+          "high_rate_pct": 12.121,
+          "loss_rate_pct": 0.0,
+          "avg_roi_pct": 1.634,
+          "high_lift": 5.417,
+          "loss_lift": 0.0,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "S-S-S-S-S-S-S",
+          "total": 287,
+          "high_rate_pct": 11.498,
+          "loss_rate_pct": 2.091,
+          "avg_roi_pct": 2.035,
+          "high_lift": 5.139,
+          "loss_lift": 0.586,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "S-S-D-S-S-S-S",
+          "total": 53,
+          "high_rate_pct": 11.321,
+          "loss_rate_pct": 1.887,
+          "avg_roi_pct": 1.655,
+          "high_lift": 5.06,
+          "loss_lift": 0.529,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "S-S-S-S-D-S-S",
+          "total": 49,
+          "high_rate_pct": 10.204,
+          "loss_rate_pct": 0.0,
+          "avg_roi_pct": 2.097,
+          "high_lift": 4.56,
+          "loss_lift": 0.0,
+          "stable_good": true,
+          "stable_bad": false
+        }
+      ],
+      "avoid_high_loss": [
+        {
+          "pattern": "D-D-D-D-D-U-U",
+          "total": 59,
+          "high_rate_pct": 1.695,
+          "loss_rate_pct": 11.864,
+          "avg_roi_pct": -1.862,
+          "high_lift": 0.758,
+          "loss_lift": 3.328,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "D-U-D-D-U-D-U",
+          "total": 59,
+          "high_rate_pct": 3.39,
+          "loss_rate_pct": 11.864,
+          "avg_roi_pct": -0.978,
+          "high_lift": 1.515,
+          "loss_lift": 3.328,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "U-D-D-U-D-D-D",
+          "total": 61,
+          "high_rate_pct": 0.0,
+          "loss_rate_pct": 11.475,
+          "avg_roi_pct": -1.122,
+          "high_lift": 0.0,
+          "loss_lift": 3.219,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "D-D-U-D-U-U-D",
+          "total": 66,
+          "high_rate_pct": 1.515,
+          "loss_rate_pct": 10.606,
+          "avg_roi_pct": -0.713,
+          "high_lift": 0.677,
+          "loss_lift": 2.975,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "U-D-U-D-U-U-U",
+          "total": 58,
+          "high_rate_pct": 0.0,
+          "loss_rate_pct": 10.345,
+          "avg_roi_pct": -1.736,
+          "high_lift": 0.0,
+          "loss_lift": 2.902,
+          "stable_good": false,
+          "stable_bad": true
+        }
+      ]
+    },
+    "sell_3candle": {
+      "patterns_seen": 27,
+      "patterns_with_enough_data": 27,
+      "most_repeated_before_high_profit": [
+        {
+          "pattern": "U-U-D",
+          "times_in_high_profit_trades": 83,
+          "share_of_high_profit_trades_pct": 9.274,
+          "times_seen_in_all_trades": 2197,
+          "high_rate_pct": 3.778,
+          "stable_good": false
+        },
+        {
+          "pattern": "D-U-U",
+          "times_in_high_profit_trades": 73,
+          "share_of_high_profit_trades_pct": 8.156,
+          "times_seen_in_all_trades": 2198,
+          "high_rate_pct": 3.321,
+          "stable_good": false
+        },
+        {
+          "pattern": "D-U-D",
+          "times_in_high_profit_trades": 61,
+          "share_of_high_profit_trades_pct": 6.816,
+          "times_seen_in_all_trades": 2307,
+          "high_rate_pct": 2.644,
+          "stable_good": false
+        },
+        {
+          "pattern": "U-D-D",
+          "times_in_high_profit_trades": 60,
+          "share_of_high_profit_trades_pct": 6.704,
+          "times_seen_in_all_trades": 2054,
+          "high_rate_pct": 2.921,
+          "stable_good": false
+        },
+        {
+          "pattern": "U-U-U",
+          "times_in_high_profit_trades": 57,
+          "share_of_high_profit_trades_pct": 6.369,
+          "times_seen_in_all_trades": 1876,
+          "high_rate_pct": 3.038,
+          "stable_good": false
+        }
+      ],
+      "best_for_high_profit": [
+        {
+          "pattern": "U-U-D",
+          "total": 2197,
+          "high_rate_pct": 3.778,
+          "loss_rate_pct": 6.008,
+          "avg_roi_pct": -0.445,
+          "high_lift": 1.688,
+          "loss_lift": 1.685,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "D-U-U",
+          "total": 2198,
+          "high_rate_pct": 3.321,
+          "loss_rate_pct": 6.096,
+          "avg_roi_pct": -0.558,
+          "high_lift": 1.484,
+          "loss_lift": 1.71,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "U-U-U",
+          "total": 1876,
+          "high_rate_pct": 3.038,
+          "loss_rate_pct": 4.851,
+          "avg_roi_pct": -0.16,
+          "high_lift": 1.358,
+          "loss_lift": 1.361,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "U-D-D",
+          "total": 2054,
+          "high_rate_pct": 2.921,
+          "loss_rate_pct": 6.134,
+          "avg_roi_pct": -0.797,
+          "high_lift": 1.306,
+          "loss_lift": 1.721,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "D-D-D",
+          "total": 1918,
+          "high_rate_pct": 2.659,
+          "loss_rate_pct": 6.621,
+          "avg_roi_pct": -0.934,
+          "high_lift": 1.188,
+          "loss_lift": 1.857,
+          "stable_good": false,
+          "stable_bad": true
+        }
+      ],
+      "avoid_high_loss": [
+        {
+          "pattern": "D-D-D",
+          "total": 1918,
+          "high_rate_pct": 2.659,
+          "loss_rate_pct": 6.621,
+          "avg_roi_pct": -0.934,
+          "high_lift": 1.188,
+          "loss_lift": 1.857,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "U-D-D",
+          "total": 2054,
+          "high_rate_pct": 2.921,
+          "loss_rate_pct": 6.134,
+          "avg_roi_pct": -0.797,
+          "high_lift": 1.306,
+          "loss_lift": 1.721,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "D-U-U",
+          "total": 2198,
+          "high_rate_pct": 3.321,
+          "loss_rate_pct": 6.096,
+          "avg_roi_pct": -0.558,
+          "high_lift": 1.484,
+          "loss_lift": 1.71,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "D-D-U",
+          "total": 2176,
+          "high_rate_pct": 2.528,
+          "loss_rate_pct": 6.02,
+          "avg_roi_pct": -0.812,
+          "high_lift": 1.13,
+          "loss_lift": 1.689,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "U-U-D",
+          "total": 2197,
+          "high_rate_pct": 3.778,
+          "loss_rate_pct": 6.008,
+          "avg_roi_pct": -0.445,
+          "high_lift": 1.688,
+          "loss_lift": 1.685,
+          "stable_good": false,
+          "stable_bad": false
+        }
+      ]
+    },
+    "sell_7candle": {
+      "patterns_seen": 2187,
+      "patterns_with_enough_data": 238,
+      "most_repeated_before_high_profit": [
+        {
+          "pattern": "D-U-U-D-D-U-D",
+          "times_in_high_profit_trades": 8,
+          "share_of_high_profit_trades_pct": 0.894,
+          "times_seen_in_all_trades": 64,
+          "high_rate_pct": 12.5,
+          "stable_good": true
+        },
+        {
+          "pattern": "D-D-U-D-D-U-U",
+          "times_in_high_profit_trades": 7,
+          "share_of_high_profit_trades_pct": 0.782,
+          "times_seen_in_all_trades": 65,
+          "high_rate_pct": 10.769,
+          "stable_good": false
+        },
+        {
+          "pattern": "U-U-D-D-D-D-D",
+          "times_in_high_profit_trades": 6,
+          "share_of_high_profit_trades_pct": 0.67,
+          "times_seen_in_all_trades": 49,
+          "high_rate_pct": 12.245,
+          "stable_good": true
+        },
+        {
+          "pattern": "D-U-D-D-U-U-D",
+          "times_in_high_profit_trades": 6,
+          "share_of_high_profit_trades_pct": 0.67,
+          "times_seen_in_all_trades": 53,
+          "high_rate_pct": 11.321,
+          "stable_good": true
+        },
+        {
+          "pattern": "D-U-U-U-U-U-D",
+          "times_in_high_profit_trades": 6,
+          "share_of_high_profit_trades_pct": 0.67,
+          "times_seen_in_all_trades": 56,
+          "high_rate_pct": 10.714,
+          "stable_good": true
+        }
+      ],
+      "best_for_high_profit": [
+        {
+          "pattern": "D-U-U-D-D-U-D",
+          "total": 64,
+          "high_rate_pct": 12.5,
+          "loss_rate_pct": 10.938,
+          "avg_roi_pct": 1.026,
+          "high_lift": 5.587,
+          "loss_lift": 3.068,
+          "stable_good": true,
+          "stable_bad": true
+        },
+        {
+          "pattern": "U-U-D-D-D-D-D",
+          "total": 49,
+          "high_rate_pct": 12.245,
+          "loss_rate_pct": 8.163,
+          "avg_roi_pct": 0.868,
+          "high_lift": 5.473,
+          "loss_lift": 2.29,
+          "stable_good": true,
+          "stable_bad": false
+        },
+        {
+          "pattern": "D-U-D-D-U-U-D",
+          "total": 53,
+          "high_rate_pct": 11.321,
+          "loss_rate_pct": 7.547,
+          "avg_roi_pct": 1.037,
+          "high_lift": 5.06,
+          "loss_lift": 2.117,
+          "stable_good": true,
+          "stable_bad": false
+        },
+        {
+          "pattern": "U-D-U-U-U-U-U",
+          "total": 45,
+          "high_rate_pct": 11.111,
+          "loss_rate_pct": 8.889,
+          "avg_roi_pct": 0.387,
+          "high_lift": 4.966,
+          "loss_lift": 2.493,
+          "stable_good": false,
+          "stable_bad": false
+        },
+        {
+          "pattern": "D-D-U-S-U-D-U",
+          "total": 36,
+          "high_rate_pct": 11.111,
+          "loss_rate_pct": 2.778,
+          "avg_roi_pct": 1.043,
+          "high_lift": 4.966,
+          "loss_lift": 0.779,
+          "stable_good": false,
+          "stable_bad": false
+        }
+      ],
+      "avoid_high_loss": [
+        {
+          "pattern": "D-D-D-U-U-D-D",
+          "total": 54,
+          "high_rate_pct": 0.0,
+          "loss_rate_pct": 20.37,
+          "avg_roi_pct": -4.229,
+          "high_lift": 0.0,
+          "loss_lift": 5.714,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "U-U-D-D-U-U-D",
+          "total": 62,
+          "high_rate_pct": 1.613,
+          "loss_rate_pct": 19.355,
+          "avg_roi_pct": -3.192,
+          "high_lift": 0.721,
+          "loss_lift": 5.429,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "D-U-U-D-D-U-U",
+          "total": 66,
+          "high_rate_pct": 1.515,
+          "loss_rate_pct": 18.182,
+          "avg_roi_pct": -3.698,
+          "high_lift": 0.677,
+          "loss_lift": 5.1,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "D-D-U-D-D-D-U",
+          "total": 67,
+          "high_rate_pct": 2.985,
+          "loss_rate_pct": 17.91,
+          "avg_roi_pct": -3.139,
+          "high_lift": 1.334,
+          "loss_lift": 5.024,
+          "stable_good": false,
+          "stable_bad": true
+        },
+        {
+          "pattern": "D-U-D-D-D-D-D",
+          "total": 46,
+          "high_rate_pct": 4.348,
+          "loss_rate_pct": 17.391,
+          "avg_roi_pct": -3.953,
+          "high_lift": 1.943,
+          "loss_lift": 4.878,
+          "stable_good": false,
+          "stable_bad": true
+        }
+      ]
+    }
+  },
+  "caveats": [
+    "Random dummy trades on historical data, no fees or slippage.",
+    "Look-back statistics, not a guarantee for the future."
+  ]
 }
