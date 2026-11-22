@@ -1,7 +1,8 @@
 # Python / Backend
 quorum.db
 backend/quorum.db
-backend/data_cache/
+backend/data_cache/*.csv
+!backend/data_cache/DATA_SOURCES.txt
 *.pyc
 __pycache__/
 .pytest_cache/

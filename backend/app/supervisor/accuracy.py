@@ -19,6 +19,10 @@ class AccuracyTracker:
             "PSX": 0.52,
         }
 
+    def set_accuracy(self, market: str, accuracy: float) -> None:
+        """Sets the accuracy score directly for a given market."""
+        self._accuracy[market] = max(0.0, min(1.0, float(accuracy)))
+
     def record_prediction(
         self, market: str, was_correct: bool, learning_rate: float = 0.08
     ) -> float:

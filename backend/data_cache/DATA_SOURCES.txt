@@ -1,0 +1,44 @@
+================================================================================
+QUORUM DATA SOURCES & CACHE PROVENANCE
+================================================================================
+
+1. US EQUITIES MARKET DATA (SPY Daily)
+--------------------------------------------------------------------------------
+File:             backend/data_cache/spy_daily.csv
+Asset Benchmark:  SPY (SPDR S&P 500 ETF Trust)
+Timeframe:        Daily (Close at 16:00:00 America/New_York)
+Start Date:       2022-01-03 (03/01/2022 16:00:00)
+End Date:         2026-11-20 (20/11/2026 16:00:00)
+Total Rows:       1,227 trading days (excluding header)
+Columns:          Date, Open, High, Low, Close, Volume
+Pricing:          RAW (unadjusted close)
+Date Format:      Day-first ("DD/MM/YYYY HH:MM:SS"), parsed day-first, date only.
+                  Early closes handled by markets.yaml holiday calendar.
+SHA-256 Checksum: 2d546129fb72643d618799f5d66ed9ed863e83139d5287346d0cd0eb05144a57
+Gap Analysis:     48 non-trading business days (Mon-Fri) across 2022-2026, perfectly
+                  matching all official NYSE holidays (Martin Luther King Jr. Day,
+                  Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day,
+                  Labor Day, Thanksgiving, Christmas Day, New Year's Day, and national days).
+                  Zero unexpected gaps.
+
+2. CRYPTO MARKET DATA (BTC Hourly)
+--------------------------------------------------------------------------------
+File:             backend/data_cache/btc_1h.csv
+Asset Benchmark:  BTCUSDT (Binance Spot)
+Timeframe:        1 Hour (1h)
+Start Timestamp:  2022-01-03 00:00:00+00:00
+End Timestamp:    2026-11-20 23:00:00+00:00
+Total Rows:       42,791 hourly candles (24/7/365 continuous trading)
+Columns:          timestamp, Date, Open, High, Low, Close, Volume, QuoteVolume, Trades
+Source:           Binance Public REST API (https://api.binance.com/api/v3/klines)
+SHA-256 Checksum: 9ee5cce53336453b325509bfe5ca3a7bfbc1ab545a000812aac059f0be426e40
+Gap Analysis:     Continuous hourly series spanning 1,783 consecutive calendar days.
+                  Zero gaps.
+
+3. ACTIVE VS INACTIVE MARKETS (FYP1 Scope)
+--------------------------------------------------------------------------------
+Active Markets:   US (SPY) and CRYPTO (BTC) - Real datasets ONLY.
+Inactive Markets: PSX, FOREX, GOLD - Deferred to FYP2.
+Synthetic Data:   Forbidden for active markets.
+Orchestrator:     Third agent monitoring active market agents.
+================================================================================

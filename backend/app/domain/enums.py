@@ -40,3 +40,4 @@ class RiskStatus(str, Enum):
     APPROVED = "Approved"
     OVERRIDDEN = "Overridden"
     REJECTED = "Rejected"
+    QUORUM_NOT_MET = "Quorum Not Met"

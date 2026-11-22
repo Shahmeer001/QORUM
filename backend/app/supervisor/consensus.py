@@ -34,7 +34,17 @@ def calculate_consensus(
 
     # Normalize
     distribution = {k.value: round((v / total_weight) * 100.0, 1) for k, v in scores.items()}
-    winning_action = max(scores.keys(), key=lambda k: scores[k])
-    winning_confidence = distribution[winning_action.value]
+
+    # Resolve directional ties (BUY vs SELL) to HOLD
+    buy_score = scores[Action.BUY]
+    sell_score = scores[Action.SELL]
+    max_val = max(scores.values())
+
+    if max_val > 0.0 and buy_score == sell_score and buy_score == max_val:
+        winning_action = Action.HOLD
+        winning_confidence = distribution[Action.HOLD.value]
+    else:
+        winning_action = max(scores.keys(), key=lambda k: scores[k])
+        winning_confidence = distribution[winning_action.value]
 
     return winning_action, winning_confidence, distribution

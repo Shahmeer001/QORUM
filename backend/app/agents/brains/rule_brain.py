@@ -19,6 +19,9 @@ class RuleBrain(Brain):
     def recommend(
         self, state: AgentState, candles: List[Candle], knowledge: Dict[str, Any]
     ) -> Tuple[Action, float, str, List[str]]:
+        if not candles:
+            return Action.ABSTAIN, 0.0, "Empty candle series", []
+
         closes = [c.close for c in candles]
         rsi = calculate_rsi(closes)
         vol = calculate_realized_volatility(closes)
@@ -56,6 +59,9 @@ class RuleBrain(Brain):
     def challenge(
         self, state: AgentState, opponent_msg: Message, candles: List[Candle]
     ) -> Optional[Tuple[str, Action, List[str]]]:
+        if not candles:
+            return None
+
         if opponent_msg.position != state.current_position and opponent_msg.position != Action.HOLD:
             closes = [c.close for c in candles]
             vol = calculate_realized_volatility(closes)
@@ -80,6 +86,9 @@ class RuleBrain(Brain):
     def reply(
         self, state: AgentState, challenge: Message, candles: List[Candle]
     ) -> Tuple[Action, float, str, List[str]]:
+        if not candles:
+            return state.current_position, state.confidence, f"Maintaining stance against {challenge.from_market}: no candle data.", []
+
         closes = [c.close for c in candles]
         vol = calculate_realized_volatility(closes)
         rsi = calculate_rsi(closes)
@@ -105,6 +114,9 @@ class RuleBrain(Brain):
     def final_stance(
         self, state: AgentState, board_messages: List[Message], candles: List[Candle]
     ) -> Tuple[Action, float, str, List[str]]:
+        if not candles:
+            return state.current_position, state.confidence, f"Final position confirmed: {state.last_reason}", state.evidence
+
         closes = [c.close for c in candles]
         vol = calculate_realized_volatility(closes)
 
