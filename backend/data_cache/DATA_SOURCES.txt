@@ -28,12 +28,14 @@ Asset Benchmark:  BTCUSDT (Binance Spot)
 Timeframe:        1 Hour (1h)
 Start Timestamp:  2022-01-03 00:00:00+00:00
 End Timestamp:    2026-11-20 23:00:00+00:00
-Total Rows:       42,791 hourly candles (24/7/365 continuous trading)
+Total Rows:       42,791 hourly candles (out of 42,792 expected slots)
 Columns:          timestamp, Date, Open, High, Low, Close, Volume, QuoteVolume, Trades
 Source:           Binance Public REST API (https://api.binance.com/api/v3/klines)
 SHA-256 Checksum: 9ee5cce53336453b325509bfe5ca3a7bfbc1ab545a000812aac059f0be426e40
-Gap Analysis:     Continuous hourly series spanning 1,783 consecutive calendar days.
-                  Zero gaps.
+Gap Analysis:     Single missing hour: 2023-03-24 13:00:00+00:00.
+                  On 2023-03-24, Binance experienced an unscheduled spot matching
+                  engine halt (11:30–14:00 UTC) resulting in no kline generation
+                  for that hour. All remaining 42,791 hours are strictly contiguous.
 
 3. ACTIVE VS INACTIVE MARKETS (FYP1 Scope)
 --------------------------------------------------------------------------------

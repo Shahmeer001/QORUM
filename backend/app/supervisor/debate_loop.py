@@ -23,10 +23,12 @@ class DebateLoop:
         agents: Dict[str, MarketAgent],
         board: BoardRepository,
         max_turns: int = 3,
+        min_margin: float = 0.0,
     ) -> None:
         self.agents = agents
         self.board = board
         self.max_turns = min(max_turns, TURN_CAP)
+        self.min_margin = min_margin
         self.accuracy_tracker = AccuracyTracker()
         self.events: List[SupervisorEventLog] = []
 
@@ -104,7 +106,9 @@ class DebateLoop:
         )
 
         summaries = self._build_summaries()
-        consensus, _, _ = calculate_consensus(summaries, self.accuracy_tracker)
+        consensus, _, _ = calculate_consensus(
+            summaries, self.accuracy_tracker, min_margin=self.min_margin
+        )
         return turns_used, consensus, summaries, self.events
 
     def _build_summaries(self) -> List[AgentSummary]:

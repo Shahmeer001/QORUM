@@ -27,6 +27,8 @@ BRAIN = os.getenv("BRAIN", "rule").lower()  # "rule" or "fake"
 DEFAULT_MAX_TURNS = 3
 TURN_CAP = 3
 DEFAULT_CONFIDENCE = 65.0
+DEFAULT_MIN_MARGIN = 5.0          # % minimum lead over runner-up required for directional consensus
+AGENT_TIMEOUT_SECONDS = 5.0       # max execution time per agent turn
 
 # Trading & Risk Thresholds
 ALLOW_SHORT = True

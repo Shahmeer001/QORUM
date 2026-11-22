@@ -15,7 +15,7 @@ from app.board.repository import BoardRepository
 from app.board.sql_repo import SqlBoardRepository
 from app.board.visibility import filter_visible_messages
 from app.db.tables import SessionTable
-from app.domain.enums import Action, Mode, RiskStatus, Role
+from app.domain.enums import Action, Mode, MsgType, RiskStatus, Role
 from app.domain.models import (
     AgentSummary,
     EquityPoint,
@@ -56,46 +56,101 @@ class SessionOrchestrator:
         self.markets_meta = load_markets_config()
 
     def check_quorum(
-        self, agents: Dict[str, any], asset: str
-    ) -> Tuple[bool, int, int, List[str]]:
+        self, agents: Dict[str, any], asset: str, session_id: str = ""
+    ) -> Tuple[bool, int, int, List[str], List[str]]:
         """
-        Quorum Rule: At least 50% of active agents must have valid data/recommendations.
-        Returns: (quorum_met, valid_count, total_count, failure_reasons)
+        Quorum Rule: Validates readiness of active agents.
+        Returns: (quorum_met, valid_count, total_count, failure_reasons, valid_markets)
+        Writes health events and exceptions to the board.
         """
         total_count = len(agents)
         if total_count == 0:
-            return False, 0, 0, ["No active agents found in session."]
+            return False, 0, 0, ["No active agents found in session."], []
 
-        valid_count = 0
+        valid_markets: List[str] = []
         reasons: List[str] = []
 
         for market, agent in agents.items():
             try:
                 candles = agent.adapter.get_candles(symbol=asset, limit=10)
                 if not candles or len(candles) == 0:
-                    reasons.append(f"{market}: No candle data returned from adapter.")
+                    r_text = f"{market}: No candle data returned from adapter (market closed / holiday)."
+                    reasons.append(r_text)
+                    if session_id:
+                        self._post_orchestrator_event(
+                            session_id=session_id,
+                            reason=r_text,
+                            evidence=["Zero Candles", "Market Closed"],
+                        )
                     continue
 
-                # Check if recommendation produces a valid position (not ABSTAIN due to empty/invalid data)
+                # Test agent recommendation
                 pos, conf, reason, _ = agent.brain.recommend(agent.state, candles, agent.knowledge)
                 if pos == Action.ABSTAIN and ("empty" in reason.lower() or "missing" in reason.lower()):
-                    reasons.append(f"{market}: Agent abstained due to missing data ({reason}).")
+                    r_text = f"{market}: Agent abstained due to missing data ({reason})."
+                    reasons.append(r_text)
+                    if session_id:
+                        self._post_orchestrator_event(
+                            session_id=session_id,
+                            reason=r_text,
+                            evidence=["Missing Data ABSTAIN"],
+                        )
                     continue
 
-                valid_count += 1
+                valid_markets.append(market)
+            except TimeoutError as te:
+                r_text = f"{market}: Health check timed out: {str(te)}"
+                reasons.append(r_text)
+                if session_id:
+                    self._post_orchestrator_event(
+                        session_id=session_id,
+                        reason=r_text,
+                        evidence=["Agent Timeout"],
+                    )
             except Exception as e:
-                reasons.append(f"{market}: Data check raised exception: {str(e)}")
+                r_text = f"{market}: Health check raised exception: {type(e).__name__}: {str(e)}"
+                reasons.append(r_text)
+                if session_id:
+                    self._post_orchestrator_event(
+                        session_id=session_id,
+                        reason=r_text,
+                        evidence=[f"Exception: {type(e).__name__}"],
+                    )
 
+        valid_count = len(valid_markets)
         quorum_met = (valid_count / total_count) >= 0.5
-        return quorum_met, valid_count, total_count, reasons
+        return quorum_met, valid_count, total_count, reasons, valid_markets
+
+    def _post_orchestrator_event(
+        self,
+        session_id: str,
+        reason: str,
+        round_num: int = 0,
+        position: Action = Action.HOLD,
+        evidence: Optional[List[str]] = None,
+    ) -> Message:
+        """Writes an official Orchestrator system message to the board."""
+        msg = Message(
+            id=f"msg_orch_{uuid.uuid4().hex[:8]}",
+            session_id=session_id,
+            round=round_num,
+            from_market="ORCHESTRATOR",
+            to_market="BOARD",
+            msg_type=MsgType.RECOMMEND,
+            position=position,
+            confidence=100.0,
+            reason=reason,
+            evidence=evidence or ["Orchestrator Governance"],
+        )
+        self.board.add_message(msg)
+        return msg
 
     def run_session(
         self, config: SessionConfig, monitor: bool = True
     ) -> SessionResult:
         """
         Executes a session. If monitor=True, the Orchestrator actively enforces
-        quorum gates and agent health checks. If monitor=False, runs raw multi-agent
-        execution without orchestrator monitoring.
+        quorum gates, agent health checks, and debate quorum (requiring both active agents).
         """
         session_id = f"QRM-{datetime.now(timezone.utc).strftime('%Y')}-{uuid.uuid4().hex[:3].upper()}"
 
@@ -107,15 +162,50 @@ class SessionOrchestrator:
             scenario=config.scenario,
         )
 
+        now_str = datetime.now(timezone.utc).strftime("%H:%M UTC")
+
         # 2. Orchestrator Quorum Check (when monitoring is active)
+        is_degraded_single = False
+        active_target = config.target
+
         if monitor:
-            quorum_met, valid_count, total_count, reasons = self.check_quorum(
-                agents=agents, asset=config.asset
+            quorum_met, valid_count, total_count, reasons, valid_markets = self.check_quorum(
+                agents=agents, asset=config.asset, session_id=session_id
             )
+
+            # Special Quorum requirement for DEBATE mode:
+            # Debate mode requires BOTH active agents to have valid data.
+            if config.mode == Mode.DEBATE and total_count >= 2:
+                if valid_count == 0:
+                    quorum_met = False
+                elif valid_count == 1:
+                    # Exactly one active agent has valid data (e.g. US holiday while BTC runs)
+                    # Trigger degraded single-agent execution!
+                    is_degraded_single = True
+                    sole_market = valid_markets[0]
+                    offline_markets = [m for m in agents if m != sole_market]
+                    active_target = sole_market
+
+                    self._post_orchestrator_event(
+                        session_id=session_id,
+                        reason=(
+                            f"Degraded Quorum: Only {sole_market} has valid data ({', '.join(offline_markets)} "
+                            "offline / market holiday). Switching to degraded single-agent mode."
+                        ),
+                        evidence=["Degraded Quorum", "Holiday Fallback"],
+                    )
+
             if not quorum_met:
-                now_str = datetime.now(timezone.utc).strftime("%H:%M UTC")
-                fail_summary = f"Quorum Not Met: only {valid_count} of {total_count} active agents have valid data (minimum 50% required). Trading halted to HOLD."
-                
+                fail_summary = (
+                    f"Quorum Not Met: only {valid_count} of {total_count} active agents have valid data "
+                    "(minimum required not met). Trading halted to HOLD."
+                )
+                self._post_orchestrator_event(
+                    session_id=session_id,
+                    reason=fail_summary,
+                    evidence=["Quorum Failure"],
+                )
+
                 # Build agent summaries showing current state / abstain
                 agent_summaries: List[AgentSummary] = []
                 for m, ag in agents.items():
@@ -130,6 +220,10 @@ class SessionOrchestrator:
                             detail=f"Valid count: {valid_count}/{total_count}",
                         )
                     )
+
+                raw_msgs = self.board.get_all(session_id)
+                open_status = {k: v.get("open", False) for k, v in self.markets_meta.items()}
+                visible_msgs = filter_visible_messages(raw_msgs, open_status)
 
                 res = SessionResult(
                     id=session_id,
@@ -148,7 +242,7 @@ class SessionOrchestrator:
                     max_drawdown=0.0,
                     win_rate=0.0,
                     timestamp=datetime.now().strftime("%d %b %Y · %H:%M PKT"),
-                    messages=[],
+                    messages=visible_msgs,
                     agents=agent_summaries,
                     trades=[],
                     equity=[EquityPoint(t="0", v=100.0)],
@@ -165,21 +259,31 @@ class SessionOrchestrator:
                     self._persist_session(res)
                 return res
 
+            if not is_degraded_single:
+                self._post_orchestrator_event(
+                    session_id=session_id,
+                    reason=f"Orchestrator health check passed: {valid_count}/{total_count} active agents verified.",
+                    evidence=["Health Check Passed"],
+                )
+
         # 3. Execute chosen multi-agent mode
-        if config.mode == Mode.SINGLE:
+        effective_mode = Mode.SINGLE if is_degraded_single else config.mode
+
+        if effective_mode == Mode.SINGLE:
             turns_used, consensus, summaries, events = run_single_mode(
                 agents=agents,
                 board=self.board,
                 session_id=session_id,
-                target_market=config.target,
+                target_market=active_target,
                 asset=config.asset,
             )
-        elif config.mode == Mode.SILENT:
+        elif effective_mode == Mode.SILENT:
             turns_used, consensus, summaries, events = run_silent_mode(
                 agents=agents,
                 board=self.board,
                 session_id=session_id,
                 asset=config.asset,
+                min_margin=config.min_margin,
             )
         else:  # Mode.DEBATE
             turns_used, consensus, summaries, events = run_debate_mode(
@@ -188,10 +292,11 @@ class SessionOrchestrator:
                 session_id=session_id,
                 asset=config.asset,
                 max_turns=config.max_turns,
+                min_margin=config.min_margin,
             )
 
         # 4. Target candles for risk governance & simulation
-        target_adapter = agents[config.target].adapter
+        target_adapter = agents[active_target].adapter
         candles = target_adapter.get_candles(symbol=config.asset, limit=100)
 
         # 5. Risk Layer Evaluation (hard veto authority)
@@ -205,10 +310,20 @@ class SessionOrchestrator:
             candles=candles,
         )
 
+        if is_degraded_single:
+            risk_note = f"Degraded single-agent mode ({active_target}): peer market offline/holiday. {risk_note}"
+            risk_events.append(
+                RiskEvent(
+                    time=now_str,
+                    text=f"Degraded single-agent fallback active for {active_target}",
+                    level="warn",
+                )
+            )
+
         # 6. Simulate trades and metrics
         trades, equity = simulate_trades(
             final_action=final_action,
-            target_market=config.target,
+            target_market=active_target,
             candles=candles,
         )
         pnl, max_dd, win_rate = compute_metrics(trades, equity)
@@ -220,8 +335,8 @@ class SessionOrchestrator:
 
         res = SessionResult(
             id=session_id,
-            mode=config.mode,
-            target=config.target,
+            mode=effective_mode,
+            target=active_target,
             asset=config.asset,
             horizon=config.horizon,
             day=config.day,

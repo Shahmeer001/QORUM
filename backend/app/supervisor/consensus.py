@@ -11,10 +11,14 @@ from app.supervisor.accuracy import AccuracyTracker
 
 
 def calculate_consensus(
-    agents: List[AgentSummary], accuracy_tracker: AccuracyTracker
+    agents: List[AgentSummary],
+    accuracy_tracker: AccuracyTracker,
+    min_margin: float = 0.0,
 ) -> Tuple[Action, float, Dict[str, float]]:
     """
     Computes winning Action and consensus confidence percentage.
+    If min_margin > 0.0 and the top directional score does not beat the runner-up
+    by at least min_margin percentage points, consensus defaults to HOLD.
     """
     scores: Dict[Action, float] = {
         Action.BUY: 0.0,
@@ -40,7 +44,18 @@ def calculate_consensus(
     sell_score = scores[Action.SELL]
     max_val = max(scores.values())
 
+    # Sort actions by score descending
+    sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    top_action, top_score = sorted_scores[0]
+    runner_up_action, runner_up_score = sorted_scores[1]
+
+    # Margin check between top score and runner up in normalized percentage points
+    lead_margin = distribution[top_action.value] - distribution[runner_up_action.value]
+
     if max_val > 0.0 and buy_score == sell_score and buy_score == max_val:
+        winning_action = Action.HOLD
+        winning_confidence = distribution[Action.HOLD.value]
+    elif min_margin > 0.0 and top_action in (Action.BUY, Action.SELL) and lead_margin < min_margin:
         winning_action = Action.HOLD
         winning_confidence = distribution[Action.HOLD.value]
     else:

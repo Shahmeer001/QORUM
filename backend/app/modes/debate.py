@@ -19,6 +19,7 @@ def run_debate_mode(
     session_id: str,
     asset: str,
     max_turns: int = 3,
+    min_margin: float = 0.0,
 ) -> Tuple[int, Action, List[AgentSummary], List[SupervisorEventLog]]:
-    loop = DebateLoop(agents=agents, board=board, max_turns=max_turns)
+    loop = DebateLoop(agents=agents, board=board, max_turns=max_turns, min_margin=min_margin)
     return loop.run(session_id=session_id, asset=asset)

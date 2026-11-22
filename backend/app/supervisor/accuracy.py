@@ -4,8 +4,8 @@ Maintains historical accuracy scores and assigns voting weights.
 """
 from __future__ import annotations
 
-from typing import Dict
-from app.domain.enums import Role
+from typing import Dict, Optional
+from app.domain.enums import Action, Role
 
 
 class AccuracyTracker:
@@ -24,12 +24,21 @@ class AccuracyTracker:
         self._accuracy[market] = max(0.0, min(1.0, float(accuracy)))
 
     def record_prediction(
-        self, market: str, was_correct: bool, learning_rate: float = 0.08
+        self,
+        market: str,
+        was_correct: Optional[bool] = None,
+        action: Optional[Action] = None,
+        reason: str = "",
+        learning_rate: float = 0.08,
     ) -> float:
         """
         Dynamically updates an agent's accuracy score based on past correct/wrong calls over days.
         Accuracy shifts toward 1.0 on correct calls and toward 0.0 on incorrect calls.
+        A missing-data or ABSTAIN call MUST NOT update accuracy weights.
         """
+        if action == Action.ABSTAIN or "empty" in reason.lower() or "missing" in reason.lower() or was_correct is None:
+            return self.get_accuracy(market)
+
         current = self._accuracy.get(market, 0.55)
         target = 1.0 if was_correct else 0.0
         updated = current + learning_rate * (target - current)

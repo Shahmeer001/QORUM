@@ -73,6 +73,7 @@ class SessionConfig(BaseModel):
     mode: Mode = Mode.DEBATE
     day: str = "2026-11-10"
     scenario: str = "neutral"  # "bull", "bear", "neutral"
+    min_margin: float = 0.0    # % minimum lead over runner-up required for directional consensus
 
     def model_post_init(self, __context: Any) -> None:
         if not self.markets:

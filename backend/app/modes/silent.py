@@ -20,6 +20,7 @@ def run_silent_mode(
     board: BoardRepository,
     session_id: str,
     asset: str,
+    min_margin: float = 0.0,
 ) -> Tuple[int, Action, List[AgentSummary], List[SupervisorEventLog]]:
     events: List[SupervisorEventLog] = []
     summaries: List[AgentSummary] = []
@@ -46,5 +47,7 @@ def run_silent_mode(
     )
 
     accuracy_tracker = AccuracyTracker()
-    consensus, _, _ = calculate_consensus(summaries, accuracy_tracker)
+    consensus, _, _ = calculate_consensus(
+        summaries, accuracy_tracker, min_margin=min_margin
+    )
     return 0, consensus, summaries, events
