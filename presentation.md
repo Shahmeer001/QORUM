@@ -1,195 +1,193 @@
-# QUORUM: Cross-Market Multi-Agent Financial Decision Architecture
-## Final Year Project Presentation & Comprehensive Technical Reference
+---
+marp: true
+theme: default
+paginate: true
+header: "QUORUM: Cross-Market Multi-Agent Financial Architecture"
+footer: "Final Year Capstone Project — Technical Presentation & Defense"
+---
+
+# QUORUM
+## Cross-Market Multi-Agent Financial Decision Architecture
+### With Supervised Peer Debate and Deterministic Risk Governance
+
+**Author:** Final Year Project Team  
+**Focus Areas:** Autonomous Multi-Agent Systems, Quantitative Trading, Algorithmic Risk Control  
+**Artifact Status:** All 22 Verification Tests Passed (100% Pass Rate)
 
 ---
 
-## Executive Summary
+## Slide 01: The Core Financial Problem
 
-**QUORUM** is an autonomous multi-agent financial decision-support and backtesting system. It addresses a fundamental flaw in traditional financial analysis: **assets do not trade in isolation**. By modeling cross-market contagion, macro sentiment, and inter-asset correlations through structured, constrained peer debate among domain-specialized agents, QUORUM produces auditable, risk-governed trading decisions.
-
-* **5 Specialized Market Agents:** Crypto, US Equities, FOREX, Gold, and PSX.
-* **Constrained Peer Debate:** Strict turn-based messaging (`RECOMMEND` $\rightarrow$ `CHALLENGE` $\rightarrow$ `REPLY` $\rightarrow$ `FINAL`).
-* **Independent Supervisor:** Weighted consensus based on historical agent accuracy.
-* **Hard Risk Gatekeeper:** Absolute veto authority over supervisor recommendations.
-* **Empirical Research Foundation:** 1-year 5-minute historical Bitcoin data analysis (40,000 baseline trades).
-* **Test Verification:** 22/22 unit, integration, contract, and system tests passed.
+### The Challenge of Modern Markets
+* **Markets Are Deeply Interconnected:** Financial assets do not trade in silos. Gold responds to US interest rates and dollar liquidity; Bitcoin responds to global macro flows and risk appetite; emerging markets (like PSX) reflect localized liquidity and currency swings.
+* **The Failure of Single-Asset Bots:** Traditional trading bots analyze only a single symbol's price chart. When macro contagion strikes, single-asset indicators fail, leading to heavy drawdowns and false breakout entries.
+* **The Danger of Unconstrained LLMs:** Off-the-shelf Large Language Models hallucinate, provide inconsistent financial reasoning, and lack deterministic quantitative discipline.
+* **The Black-Box Dilemma:** Deep learning models cannot explain *why* a particular trade was recommended, making regulatory compliance and risk auditing impossible.
 
 ---
 
-## Presentation Outline
+## Slide 02: The QUORUM Solution
 
-```text
-Slide 01: Project Overview & Problem Statement
-Slide 02: System Architecture & Agent Roles
-Slide 03: The Empirical Research Pipeline (Steps 01 - 07)
-Slide 04: The 5 Locked Design Decisions
-Slide 05: The Life of a Decision Session (Step-by-Step Flow)
-Slide 06: Test Suite Architecture & Verification (How the 22 Tests Pass)
-Slide 07: Experimental Comparison: Single vs. Silent vs. Debate
-Slide 08: Technology Stack & Setup Guide
-Slide 09: Summary & Rubric Compliance
-```
-
----
-
-## Slide 01: Project Overview & Problem Statement
-
-### The Problem
-* **Siloed Analysis:** Most algorithmic strategies analyze a single symbol's price chart, ignoring global macro contagion, dollar strength, bond yields, and liquidity spillovers.
-* **LLM Hallucinations:** Unconstrained language models often generate plausible-sounding but financially invalid trading advice without quantitative discipline.
-* **Lack of Auditability:** Deep neural network "black boxes" cannot explain *why* a particular position was recommended.
-
-### The QUORUM Solution
-QUORUM combines the reasoning and debate capabilities of autonomous agents with hard quantitative guardrails:
-1. **Domain Specialization:** Each agent only analyzes and defends its own market.
-2. **Auditable Blackboard:** Every debate message, challenge, and reply is permanently recorded on an append-only message board.
-3. **Mathematical Consensus:** Supervisor tallies weighted votes rather than relying on arbitrary sentiment.
-4. **Deterministic Risk Veto:** If volatility or drawdown thresholds are exceeded, the risk layer forces a `HOLD` or `ABSTAIN`.
-
----
-
-## Slide 02: System Architecture & Agent Roles
-
-```mermaid
-flowchart TD
-    subgraph Feeds [Market Data Adapters]
-        D1[Binance BTC 24/7]
-        D2[US SPY/GLD NYSE/NASDAQ]
-        D3[Forex / Gold / PSX]
-    end
-
-    subgraph Board [Append-Only Debate Board]
-        M1[Crypto Agent]
-        M2[US Equity Agent]
-        M3[Forex Agent]
-        M4[Gold Agent]
-        M5[PSX Agent]
-    end
-
-    Feeds -->|Candles Closed <= 4 PM NY| Board
-    Board -->|R0: Recommendations| Sup[Supervisor Agent]
-    Board -->|R1: Cross-Market Challenges| Sup
-    Board -->|R2: Final Positions| Sup
-    Sup -->|Weighted Consensus| Risk{Risk Gatekeeper}
-    Risk -->|Vol <= 2.5% & DD <= 5%| Approved[Execute Action: BUY / SELL]
-    Risk -->|Vol > 2.5% or DD > 5%| Overridden[Override Action: HOLD / ABSTAIN]
-    Approved --> Sim[Deterministic Simulator & Equity Curve]
-    Overridden --> Sim
-```
-
-### Agent Roster & Economic Roles
-
-| Market | Benchmark | Trading Hours | Economic Indicator Role |
-|---|---|---|---|
-| **CRYPTO** | `BTCUSDT` | 24/7/365 | High-beta speculative gauge; liquidity bellwether; digital gold competitor. |
-| **US** | `SPY` / `GLD` | Mon–Fri 09:30–16:00 ET | Global risk-on/risk-off driver; real yields drive metals and foreign exchange. |
-| **FOREX** | `EURUSD` / `DXY` | 24/5 OTC | Global currency valuation; dollar strength inversely prices commodities. |
-| **GOLD** | `XAUUSD` | Mon–Fri OTC | Traditional safe-haven hedge; reacts to inflation, geopolitical tension, real yields. |
-| **PSX** | `KSE100` | Mon–Fri Local | Regional emerging market proxy; local risk appetite and PKR flow sentiment. |
-
----
-
-## Slide 03: The Empirical Research Pipeline (Steps 01 - 07)
-
-Before the multi-agent system runs, a quantitative pipeline analyzes **1 year of frozen 5-minute historical Bitcoin data** (from Binance Vision archives) to generate statistical baselines for agent brains.
-
-```text
-research/
-├── 01_download_data.py                 # Fetches official Binance OHLCV candles
-├── 02_random_dummy_trades.py           # 40,000 random-entry baseline trades
-├── 03_roi_and_indicators.py            # Computes RSI-14, volume, and tags high-profit trades
-├── 04_pattern_stats.py                 # Identifies 3-candle & 7-candle movement patterns (U-S-D)
-├── 05_rsi_strategy.py                  # Evaluates systematic RSI (20-30 buy / 70-80 sell) strategy
-├── 06_make_report.py                   # Generates comprehensive academic PDF report
-└── 07_profitable_pattern_histograms.py # Plots frequency histograms of profitable patterns
-```
-
-### Key Quantitative Findings Exported to Agent Brains
-
-1. **Random Benchmark:** 40,000 baseline trades yield a historical win rate of **$51.8\%$** and a high-profit ($+10\%$ ROI) rate of **$12.8\%$**.
-2. **Candle Movement Patterns:** Using a tolerance of $\pm 0.025\%$ (`SAME_TOLERANCE = 0.00025`), each candle is labeled:
-   - `U` (Up): Price rose $> +0.025\%$.
-   - `S` (Same): Price change within $\pm 0.025\%$.
-   - `D` (Down): Price dropped $< -0.025\%$.
-3. **Pattern Ingestion:** Patterns like `D-D-D` (oversold climax) demonstrate a high-profit hit rate of **$18.4\%$** (a **$1.43\times$ statistical lift** over random baseline). These stats are stored in `backend/knowledge/crypto.json` and directly inform agent decision weights.
-
----
-
-## Slide 04: The 5 Locked Design Decisions
-
-To ensure scientific validity and avoid data snooping, five architectural decisions are locked into the system:
+### Structured Autonomous Multi-Agent Governance
+QUORUM resolves these challenges by combining domain-specialized agents with mathematical consensus and an immutable risk gatekeeper:
 
 ```mermaid
 flowchart LR
-    A[4:00 PM NY Close] --> B[Timezone Shift: EDT 20:00 UTC / EST 21:00 UTC]
-    B --> C[Data Cutoff: Drop Candles > Cutoff]
-    C --> D[Round Visibility: Hide Other Agents' Current Turn]
-    D --> E[Immutable Board: No Edits / No Deletes]
+    A[5 Specialized Market Agents] -->|Structured Peer Debate| B[Append-Only Message Board]
+    B -->|Weighted Voting| C[Supervisor Consensus]
+    C -->|Mandatory Risk Filter| D{Risk Gatekeeper}
+    D -->|Approved| E[Execute Trade]
+    D -->|Overridden| F[Force HOLD / ABSTAIN]
 ```
 
-### 1. Unified Daily Decision Time Just After US Close
-* **Rationale:** Alternating agents across different hours caused multi-day lag for a single 3-turn debate.
-* **Rule:** A trading session runs once per day, immediately following the US equity market close (4:00 PM New York).
-
-### 2. Timezone-Aware Daylight Saving Time (DST) Handling
-* 4:00 PM New York (`America/New_York`) shifts in UTC:
-  - **Summer (EDT):** 4:00 PM NY = **20:00 UTC**.
-  - **Winter (EST):** 4:00 PM NY = **21:00 UTC**.
-* The function `get_us_close_utc(date_str)` calculates this dynamically, preventing timezone drift.
-
-### 3. Strict Look-Ahead Guard (Data Cutoff)
-* To prevent future data leakage, data adapters **never** return candles that closed after the decision cutoff time.
-
-### 4. Round-Level Debate Visibility
-* In debate round $r$, an agent can see:
-  - All messages from completed earlier rounds ($< r$).
-  - Its own messages from round $r$.
-* Opponents' round $r$ messages remain hidden until round $r$ finishes, preventing peer-peeking.
-
-### 5. Append-Only Board Immutability
-* The message board allows only `add` and `read`. Any call to `update_message()` or `delete_message()` raises an immediate `PermissionError`.
+1. **Domain Specialization:** Each market is represented by its own dedicated agent.
+2. **Constrained Peer Debate:** Agents must follow strict debate turn protocols (`RECOMMEND` $\rightarrow$ `CHALLENGE` $\rightarrow$ `REPLY` $\rightarrow$ `FINAL`).
+3. **Mathematical Consensus:** The Supervisor aggregates stances using historical accuracy weights.
+4. **Hard Risk Governance:** Risk control has absolute veto power over agent decisions.
 
 ---
 
-## Slide 05: Life of a Decision Session (Step-by-Step Flow)
+## Slide 03: The 5 Market Agents & Their Economic Roles
+
+QUORUM monitors 5 major financial arenas. Any market can be chosen as the target asset, while the remaining four act as related debate peers:
+
+| Market Agent | Primary Benchmark | Operational Hours | Core Economic Role in Debate |
+|---|---|---|---|
+| **CRYPTO** | `BTCUSDT` | 24/7/365 | Global speculative gauge; high-beta risk bellwether; digital gold competitor. |
+| **US EQUITIES** | `SPY` / `GLD` | Mon–Fri 09:30–16:00 ET | Global risk-on/off driver; Treasury real yields directly price gold and currencies. |
+| **FOREX** | `EURUSD` / `DXY` | 24/5 OTC | Global currency valuation; US Dollar strength inversely impacts commodities. |
+| **GOLD** | `XAUUSD` | Mon–Fri OTC | Traditional safe-haven hedge; reacts to inflation expectations and geopolitics. |
+| **PSX** | `KSE100` | Mon–Fri Local | Regional emerging market proxy; measures localized risk appetite and PKR flows. |
+
+---
+
+## Slide 04: The Empirical Research Pipeline (Steps 01 to 07)
+
+Before deploying the agents, we execute an empirical data pipeline on **1 year of frozen 5-minute historical Bitcoin data** (from official Binance archives) to establish baseline benchmarks:
+
+```mermaid
+flowchart TD
+    S1[01: Download Frozen 5m Binance Data] --> S2[02: Simulate 40,000 Random Baseline Trades]
+    S2 --> S3[03: Calculate RSI-14, Volume & Categorize ROI]
+    S3 --> S4[04: Mine 3-Candle & 7-Candle Movement Patterns U-S-D]
+    S4 --> S5[05: Backtest Systematic RSI Zone Strategy 20-30 / 70-80]
+    S5 --> S6[06: Generate Comprehensive Academic PDF Report]
+    S6 --> S7[07: Build Histograms of Profitable Patterns]
+```
+
+* **Step 01 (`01_download_data.py`):** Downloads and verifies historical candles without look-ahead bias.
+* **Step 02 (`02_random_dummy_trades.py`):** Establishes the neutral baseline (Win rate: $51.8\%$, High-profit rate: $12.8\%$).
+* **Step 03 (`03_roi_and_indicators.py`):** Calculates RSI, volume, and relative liquidity.
+* **Step 04 (`04_pattern_stats.py`):** Labels candlestick patterns and exports `agent_pattern_knowledge.json`.
+* **Step 05 (`05_rsi_strategy.py`):** Tests the systematic buy (RSI 20–30) / sell (RSI 70–80) rule.
+* **Step 06 & 07 (`06_make_report.py`, `07_profitable_pattern_histograms.py`):** Synthesizes visual evidence.
+
+---
+
+## Slide 05: Candlestick Pattern Discovery & Knowledge Ingestion
+
+### Pattern Definition & Statistical Lift
+Candles are categorized based on their close relative to the prior candle's close using a tolerance of $\pm 0.025\%$ (`SAME_TOLERANCE = 0.00025`):
+* `U` (Up): Close $> \text{Prior Close} \times (1 + 0.00025)$
+* `S` (Same): Close change within $\pm 0.025\%$
+* `D` (Down): Close $< \text{Prior Close} \times (1 - 0.00025)$
+
+```text
+3 Candles = 3 x 3 x 3 = 27 Possible Patterns (e.g., U-U-U, D-D-D, U-S-D)
+7 Candles = 3^7 = 2,187 Possible Patterns
+```
+
+### Knowledge Ingestion into Agent Brains
+* **Empirical Lift:** Pattern `D-D-D` (oversold capitulation) yields an **$18.4\%$ high-profit rate**, representing a **$1.43\times$ statistical lift** over random trading.
+* **Integration:** These statistics are exported to `backend/knowledge/crypto.json`. When an agent detects `D-D-D`, it cites this empirical evidence to defend a `BUY` recommendation.
+
+---
+
+## Slide 06: The 5 Locked Design Decisions
+
+To ensure mathematical rigor and prevent data snooping, five architectural rules are locked:
+
+```mermaid
+flowchart TD
+    subgraph Decision Guardrails
+        D1[Decision Time: 4:00 PM New York Close]
+        D2[DST Handling: Dynamic UTC Conversion EDT 20:00 / EST 21:00]
+        D3[Data Cutoff: Drop Candles Closing After Decision Time]
+        D4[Round Visibility: Hide Other Agents' Messages in Current Round]
+        D5[Immutable Board: Append and Read ONLY]
+    end
+```
+
+1. **Daily Decision Cutoff:** Debates run once per trading day, immediately following the US stock market close (4:00 PM New York).
+2. **Daylight Saving Time (DST) Handling:** Handled via Python's `zoneinfo.ZoneInfo("America/New_York")`. Summer (EDT) is 20:00 UTC; Winter (EST) is 21:00 UTC.
+3. **Look-Ahead Prevention:** Adapters discard all candles closing after the decision time.
+4. **Round-Level Privacy:** In round $r$, an agent sees earlier rounds ($< r$) and its own messages from round $r$, preventing peer-peeking.
+5. **Board Immutability:** The shared board rejects edit or delete calls (`PermissionError`).
+
+---
+
+## Slide 07: Life of a Decision Session (Step-by-Step Flow)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Trader as User / Portfolio Manager
+    actor Trader as User / UI
     participant API as FastAPI Backend
-    participant Board as Append-Only Board
+    participant Board as Immutable Board
     participant Agents as 5 Market Agents
     participant Sup as Supervisor
     participant Risk as Risk Gatekeeper
-    participant Sim as Trade Simulator
+    participant Sim as Simulator
 
     Trader->>API: POST /sessions (Target: GOLD, Asset: XAUUSD, Mode: Debate)
-    API->>Board: Initialize empty board repository
+    API->>Board: Initialize empty session store
     API->>Agents: Round 0: Request Initial Recommendations
-    Agents->>Board: Post RECOMMEND messages (BUY, SELL, or HOLD)
+    Agents->>Board: Post RECOMMEND messages (BUY, SELL, HOLD)
     API->>Agents: Round 1: Cross-Market Challenges
     Agents->>Board: Post CHALLENGE messages to conflicting peers
     Agents->>Board: Post compulsory REPLY messages
     API->>Agents: Round 2: Final Stances
-    Agents->>Board: Post FINAL stances synthesizing debate
-    API->>Sup: Tally weighted votes based on accuracy
-    Sup->>Risk: Submit draft consensus (e.g., BUY)
-    Risk->>Risk: Check realized volatility (<= 2.5%) and drawdown (<= 5.0%)
+    Agents->>Board: Post FINAL stances incorporating debate feedback
+    API->>Sup: Calculate weighted consensus based on agent accuracy
+    Sup->>Risk: Submit proposed consensus (e.g. BUY)
+    Risk->>Risk: Evaluate Realized Volatility (<= 2.5%) & Drawdown (<= 5.0%)
     alt Volatility > 2.5%
-        Risk-->>API: Override consensus to HOLD
-    else Risk Checks Passed
+        Risk-->>API: Override consensus BUY -> HOLD
+    else Risk Within Limits
         Risk-->>API: Approve consensus action BUY
     end
-    API->>Sim: Simulate trades & calculate equity curve
-    API-->>Trader: Return SessionResult JSON (messages, agents, trades, equity)
+    API->>Sim: Simulate execution & generate equity curve
+    API-->>Trader: Return complete SessionResult JSON
 ```
 
 ---
 
-## Slide 06: Test Suite Architecture & Verification
+## Slide 08: Core Software Components & Code Mapping
 
-All **22 tests pass in 8.31s**, verifying every mathematical and architectural contract:
+The codebase enforces strict separation of concerns across clean architectural layers:
+
+```text
+backend/
+├── app/
+│   ├── domain/           # Core enums (Action, Mode, MarketId) and data models (Candle, Message)
+│   ├── config/           # Central parameters (settings.py) and market directory (markets.yaml)
+│   ├── adapters/         # Market data providers (binance_btc.py, us_spy.py, synthetic.py)
+│   ├── signals/          # Technical indicators (rsi.py, candle_patterns.py, volatility.py)
+│   ├── board/            # Immutable repository (memory_repo.py) & visibility filter (visibility.py)
+│   ├── agents/           # MarketAgent class & rule brain (rule_brain.py, fake_brain.py)
+│   ├── supervisor/       # Debate loop coordinator, consensus tally, and accuracy tracker
+│   ├── risk/             # Absolute veto governance (risk_layer.py, rules.py)
+│   ├── simulator/        # Deterministic trade execution engine & equity curve calculator
+│   ├── modes/            # Single Agent, Silent Consensus, and Debate execution modes
+│   └── api/              # FastAPI routes (/markets, /sessions, /compare)
+└── tests/                # 22 unit, integration, contract, and system tests
+```
+
+---
+
+## Slide 09: Test Suite Architecture (All 22 Tests Passed)
+
+All 22 automated tests pass in **8.31s**, verifying every mathematical contract:
 
 ```text
 ============================= test session starts =============================
@@ -221,87 +219,132 @@ backend/tests/unit/test_weights.py::test_agent_weights_chosen_vs_related PASSED 
 ======================== 22 passed in 8.31s ========================
 ```
 
-### How the 5 Stage Contract Tests Passed
+---
 
-1. **`test_candle_closes_after_decision_time_never_returned`**:
-   - *Logic:* Cutoff set to `21:00 UTC`. Input contains candles at `20:55`, `21:00`, and `21:05`.
-   - *Mechanism:* `filter_visible_data()` filters by timestamp $\le$ decision time.
-   - *Verification:* The `21:05` candle is discarded; exactly 2 candles return.
-2. **`test_message_from_current_round_invisible_to_other_agent`**:
-   - *Logic:* In Round 1, GOLD reads the board containing US (Round 0), CRYPTO (Round 1), and GOLD (Round 1).
-   - *Mechanism:* Visibility rule hides opponents' messages where `round == current_round`.
-   - *Verification:* GOLD sees only US (Round 0) and its own reply; CRYPTO's challenge is hidden.
-3. **`test_weekends_us_adapter_no_new_candle_btc_works`**:
-   - *Logic:* Saturday and Sunday candle requests sent to US and BTC adapters.
-   - *Mechanism:* `USMarketAdapter` checks `weekday() in (5, 6)` and returns empty; `BinanceBTCAdapter` operates continuously.
-   - *Verification:* US returns `0` candles; BTC returns active candles.
-4. **`test_us_close_shifts_across_daylight_saving`**:
-   - *Logic:* Evaluates 4:00 PM NY for June 15 (Summer) and December 15 (Winter).
-   - *Mechanism:* `ZoneInfo("America/New_York")` converts local close to UTC.
-   - *Verification:* June evaluates to `20:00 UTC` (EDT); December evaluates to `21:00 UTC` (EST).
-5. **`test_memory_repo_rejects_edit_or_delete`**:
-   - *Logic:* Calls `update_message()` and `delete_message()` on `MemoryBoardRepository`.
-   - *Mechanism:* Methods explicitly raise `PermissionError` and store deep copies.
-   - *Verification:* Forbidden operations throw exceptions; stored messages remain unchanged.
+## Slide 10: Deep Dive: The 5 Stage Contract Tests
+
+| Test Case | What Was Tested | Code Mechanism | Assertion Result |
+|---|---|---|---|
+| **1. Look-Ahead Cutoff** | Candles closing after decision cutoff must be dropped. | `filter_visible_data()` filters `timestamp <= decision_time_utc`. | `21:05` candle was discarded; exactly 2 valid candles returned. |
+| **2. Round Privacy** | Agent cannot see opponent messages in the current turn. | `is_message_visible_to_reader()` checks `round < r` or `sender == reader`. | Opponent's Round 1 challenge hidden; own messages visible. |
+| **3. Weekend Closures** | US equity markets close on weekends; Crypto runs 24/7. | `USMarketAdapter` checks `weekday() in (5, 6)` and returns `[]`. | US returned `0` candles on weekend; BTC returned active candles. |
+| **4. DST UTC Shifts** | 4:00 PM NY must convert to the correct UTC hour. | `ZoneInfo("America/New_York")` converts local time to UTC. | June evaluated to `20:00 UTC`; December evaluated to `21:00 UTC`. |
+| **5. Board Immutability** | Edits and deletions must be strictly rejected. | `MemoryBoardRepository` raises `PermissionError` and deep-copies data. | Updating or deleting raised `PermissionError`; records intact. |
 
 ---
 
-## Slide 07: Experimental Comparison: Single vs. Silent vs. Debate
+## Slide 11: Experimental Findings: Single vs. Silent vs. Debate
 
-The system was evaluated across three operational modes on identical historical market conditions:
+We evaluated all three operational modes under identical historical market regimes:
 
-| Metric | Single Agent Mode | Silent Consensus Mode | Debate Mode (QUORUM) |
+```mermaid
+xychart-beta
+    title "Simulated Return (PnL %) vs. Max Drawdown (%) Across Modes"
+    x-axis ["Single Agent", "Silent Consensus", "Debate Mode (QUORUM)"]
+    y-axis "Percentage (%)" -3 --> 5
+    bar [1.40, 2.10, 3.42]
+    line [-2.60, -1.80, -1.08]
+```
+
+### Key Performance Metrics
+
+| Evaluation Metric | Single Agent Mode | Silent Consensus Mode | Debate Mode (QUORUM) |
 |---|:---:|:---:|:---:|
-| **Agent Input** | Target Agent Only (e.g. Gold) | 5 Independent Votes | 5 Debating Agents |
-| **Turns Used** | 0 | 0 | 2 – 3 |
-| **Cross-Market Challenges** | None | None | Active peer review |
+| **Agent Collaboration** | Target Agent Only (e.g. Gold) | 5 Independent Votes | 5 Debating Agents |
+| **Turns Used** | 0 turns | 0 turns | 2 – 3 turns |
+| **Cross-Market Peer Review** | None | None | Active challenges & replies |
 | **Simulated Return (PnL)** | $+1.40\%$ | $+2.10\%$ | **$+3.42\%$** |
-| **Max Drawdown** | $-2.60\%$ | $-1.80\%$ | **$-1.08\%$** |
-| **False Breakout Traps** | High | Moderate | **Lowest (Filtered by peer challenges)** |
-| **Risk Overrides Triggered** | Rarely | Moderate | **Accurately flagged in high-volatility regimes** |
+| **Max Drawdown** | $-2.60\%$ | $-1.80\%$ | **$-1.08\%$ (58% Reduction)** |
+| **False Breakout Resistance** | Vulnerable to local noise | Moderate | **High (Filtered by peers)** |
+| **Risk Overrides Triggered** | Rarely | Moderate | **Accurately flagged in high volatility** |
 
 > [!TIP]
-> **Key Insight:** In Single Agent mode, local noise often causes false breakout entries. In Debate mode, related agents (such as US and Crypto) challenge unconfirmed rallies, prompting the supervisor and risk layer to adopt safer stances and cutting drawdowns by more than half.
+> **Takeaway:** Cross-market debate actively filters out false breakouts. When Gold breaks out without US equity or currency confirmation, related agents challenge the move, prompting the supervisor and risk layer to enforce safety.
 
 ---
 
-## Slide 08: Technology Stack & Setup Guide
+## Slide 12: Modern Web Application & User Experience
 
-### Tech Stack
-* **Backend:** Python 3.14, FastAPI, SQLAlchemy, SQLite, Pydantic V2, PyYAML, Pytest.
-* **Research Pipeline:** Pandas, NumPy, Matplotlib, urllib, zipfile.
-* **Frontend:** TanStack Start, React 19, Vite, Tailwind CSS, shadcn/ui, Recharts.
+The interactive user interface (built with TanStack Start, React 19, and Tailwind CSS) provides full visual transparency into the autonomous multi-agent process:
 
-### Fast Reproduction Commands
+1. **New Session Setup (`/new-session`):**
+   - Interactive selection of target market, asset symbol, trading day, and risk thresholds.
+   - Mode selector (`Single`, `Silent`, `Debate`) and scenario simulator (`Bull`, `Bear`, `Neutral`).
+2. **Live Debate Stepper (`/live`):**
+   - Step-by-step playback of agent positions across Round 0, Round 1, and Round 2.
+   - Expandable message bubbles displaying evidence tags, confidence scores, and reasons.
+3. **Audit Replay Feed (`/replay`):**
+   - Complete searchable and filterable log of all debate messages.
+4. **Decision Results (`/results`):**
+   - Displays final recommendation, supervisor consensus, and risk override notices.
+5. **Trade Simulator (`/simulation`):**
+   - Responsive equity curve chart, detailed trade log, and risk violation event log.
+6. **Side-by-Side Comparison (`/compare`):**
+   - Direct comparison table comparing Single, Silent, and Debate modes.
 
+---
+
+## Slide 13: Developer Reproduction Guide
+
+### 1. Backend Environment Setup & Testing
 ```powershell
-# 1. Backend setup & test execution
+# Navigate to backend and create isolated virtual environment
 cd backend
 python -m venv .venv
 .\.venv\Scripts\activate
+
+# Install dependencies and initialize database
 pip install -r requirements.txt
 python scripts/init_db.py
 python scripts/seed_db.py
-python -m pytest
+python scripts/import_knowledge.py
 
-# 2. Run terminal scenario demo
+# Run complete test suite (22 tests)
+python -m pytest -v
+```
+
+### 2. Terminal Scenario Demos
+```powershell
+# Run Bull scenario (approved BUY, +3.42% PnL)
 python scripts/run_scenario.py --scenario bull
-python scripts/run_scenario.py --scenario bear
 
-# 3. Frontend setup & dev server
+# Run Bear scenario (elevated volatility, risk override to HOLD)
+python scripts/run_scenario.py --scenario bear
+```
+
+### 3. Frontend Web Dashboard
+```powershell
 cd ../frontend
-bun install
-bun run dev
+bun install     # or: npm install
+bun run dev     # or: npm run dev
+# Open http://localhost:3000 in your browser
 ```
 
 ---
 
-## Slide 09: Summary & Rubric Compliance
+## Slide 14: Capstone Learning Outcomes (CLO) Alignment
 
-QUORUM fulfills all Capstone Learning Outcomes (CLO) and academic project deliverables:
+| Rubric Outcome | How QUORUM Fulfills the Requirement |
+|---|---|
+| **CLO-1: Complex Engineering Problem** | Modeled cross-market contagion across 5 asynchronous asset classes with dynamic timezone offsets. |
+| **CLO-2: System Architecture & Design** | Designed clean layered architecture separating data adapters, immutable boards, autonomous brains, and risk layers. |
+| **CLO-3: Quantitative & Research Depth** | Analyzed 1 year of 5-minute historical Binance data (40,000 trades) to extract pattern statistics with verified lift. |
+| **CLO-4: Verification & Quality Assurance** | Implemented 22 comprehensive automated tests verifying look-ahead prevention, DST shifts, and risk overrides. |
+| **CLO-5: Modern User Interface & Tooling** | Built a responsive web dashboard with live debate steppers, equity curve charts, and message replay. |
 
-1. **Complex Engineering Problem (CLO-1):** Multi-market cross-asset modeling with asynchronous operational schedules resolved via a unified decision cutoff.
-2. **Rigorous Design & Architecture (CLO-2):** Clean layered architecture separating data adapters, immutable boards, autonomous brains, supervisor consensus, and risk governance.
-3. **Empirical Research Foundation (CLO-3):** 1-year historical dataset analysis with pattern lift statistics informing agent decision models.
-4. **Comprehensive Quality Assurance (CLO-4):** 22 unit, integration, and system tests verifying business rules, look-ahead prevention, and immutability.
-5. **Modern User Interface (CLO-5):** Full-featured responsive web application with step-by-step playback, trade simulation, and side-by-side mode comparison.
+---
+
+## Slide 15: Conclusion
+
+### Summary of Accomplishments
+* **Proven Performance:** Debate mode delivered a $+3.42\%$ simulated return while cutting maximum drawdown by more than half (to $-1.08\%$).
+* **Explainable AI:** Every trading recommendation is backed by a verifiable transcript of peer challenges and replies.
+* **Deterministic Risk Governance:** Absolute veto authority ensures volatile or high-drawdown market regimes are never traded blindly.
+* **Production-Grade Engineering:** 22/22 tests passing, clean git history, verified SQLite database, and complete responsive frontend.
+
+---
+
+# Questions & Discussion
+
+**Thank You.**  
+The complete source code, test suites, and documentation are available in the repository.
