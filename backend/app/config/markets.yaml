@@ -1,23 +1,7 @@
 # QUORUM Market Registry Configuration
-# One row = one market agent
+# One entry = one market agent
 
 markets:
-  PSX:
-    id: PSX
-    name: Pakistan Stock Exchange
-    symbol: KSE100
-    region: Emerging equities · Karachi
-    time_zone: Asia/Karachi
-    session_close_time: "15:30"
-    active: true
-    open: false
-    assets:
-      - OGDC
-      - HBL
-      - LUCK
-      - ENGRO
-    why: Local risk appetite and PKR-linked flows signal regional sentiment.
-
   US:
     id: US
     name: US Equities
@@ -26,44 +10,12 @@ markets:
     time_zone: America/New_York
     session_close_time: "16:00"
     active: true
+    phase: FYP1
+    adapter: app.adapters.us_spy.USMarketAdapter
     open: false
     assets:
-      - AAPL
       - SPY
-      - MSFT
-      - GLD
     why: Global risk-on/off driver; real yields move gold and crypto.
-
-  FOREX:
-    id: FOREX
-    name: Foreign Exchange
-    symbol: EURUSD
-    region: Currencies · 24/5 OTC
-    time_zone: Europe/London
-    session_close_time: "17:00"
-    active: true
-    open: true
-    assets:
-      - EURUSD
-      - USDPKR
-      - DXY
-      - USDJPY
-    why: Dollar strength directly prices gold and commodities.
-
-  GOLD:
-    id: GOLD
-    name: Gold
-    symbol: XAUUSD
-    region: Commodity · Safe haven
-    time_zone: UTC
-    session_close_time: "17:00"
-    active: true
-    open: false
-    assets:
-      - XAUUSD
-      - GLD
-      - IAU
-    why: Classic hedge; reacts to inflation, yields and fear.
 
   CRYPTO:
     id: CRYPTO
@@ -73,9 +25,59 @@ markets:
     time_zone: UTC
     session_close_time: "23:59"
     active: true
+    phase: FYP1
+    adapter: app.adapters.binance_btc.BinanceBTCAdapter
     open: true
     assets:
+      - BTCUSDT
       - BTC-USD
-      - ETH-USD
-      - SOL-USD
-    why: High-beta risk gauge; competes with gold as 'digital gold'.
+    why: High-beta risk gauge; digital liquidity bellwether.
+
+  PSX:
+    id: PSX
+    name: Pakistan Stock Exchange
+    symbol: KSE100
+    region: Emerging equities · Karachi
+    time_zone: Asia/Karachi
+    session_close_time: "15:30"
+    active: false
+    phase: FYP2
+    adapter: app.adapters.synthetic.SyntheticAdapter
+    open: false
+    assets:
+      - OGDC
+      - HBL
+      - LUCK
+      - ENGRO
+    why: Regional emerging market proxy (FYP2).
+
+  FOREX:
+    id: FOREX
+    name: Foreign Exchange
+    symbol: EURUSD
+    region: Currencies · 24/5 OTC
+    time_zone: Europe/London
+    session_close_time: "17:00"
+    active: false
+    phase: FYP2
+    adapter: app.adapters.synthetic.SyntheticAdapter
+    open: true
+    assets:
+      - EURUSD
+      - DXY
+    why: Dollar strength benchmark (FYP2).
+
+  GOLD:
+    id: GOLD
+    name: Gold
+    symbol: XAUUSD
+    region: Commodity · Safe haven
+    time_zone: UTC
+    session_close_time: "17:00"
+    active: false
+    phase: FYP2
+    adapter: app.adapters.synthetic.SyntheticAdapter
+    open: false
+    assets:
+      - XAUUSD
+    why: Classic safe-haven hedge against macro shocks (FYP2).

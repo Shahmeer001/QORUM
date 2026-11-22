@@ -1,13 +1,16 @@
 """
 Agent Factory and Execution Runner.
-Builds agents dynamically from markets.yaml and runs the chosen mode.
+Builds agents dynamically via minimal dynamic registry loader from markets.yaml.
+Strictly enforces real adapters for active markets (US, CRYPTO).
 """
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 from typing import Dict, List
 import yaml
 
+from app.adapters.base import MarketDataAdapter
 from app.adapters.binance_btc import BinanceBTCAdapter
 from app.adapters.synthetic import SyntheticAdapter
 from app.adapters.us_spy import USMarketAdapter
@@ -28,6 +31,36 @@ def load_markets_config() -> dict:
     return {}
 
 
+def get_adapter_for_market(
+    market_id: str, market_cfg: dict, scenario: str = "neutral"
+) -> MarketDataAdapter:
+    """
+    Registry adapter loader.
+    Active markets strictly use real data adapters (never synthetic).
+    Inactive/FYP2 markets load their declared adapter class dynamically.
+    """
+    if market_id == "US":
+        return USMarketAdapter(scenario=scenario)
+    if market_id == "CRYPTO":
+        return BinanceBTCAdapter()
+
+    adapter_path = market_cfg.get("adapter")
+    if adapter_path:
+        try:
+            module_name, class_name = adapter_path.rsplit(".", 1)
+            mod = importlib.import_module(module_name)
+            cls = getattr(mod, class_name)
+            if cls is SyntheticAdapter:
+                base_price = 2000.0 if market_id == "GOLD" else 100.0
+                return cls(scenario=scenario, base_price=base_price)
+            return cls()
+        except Exception:
+            pass
+
+    base_price = 2000.0 if market_id == "GOLD" else 100.0
+    return SyntheticAdapter(scenario=scenario, base_price=base_price)
+
+
 def build_agents(
     board: BoardRepository,
     target_market: str,
@@ -41,13 +74,8 @@ def build_agents(
 
     for m in selected:
         role = Role.CHOSEN if m == target_market else Role.RELATED
-        # Assign specialized adapters
-        if m == "CRYPTO":
-            adapter = BinanceBTCAdapter()
-        elif m in ("US", "FOREX"):
-            adapter = USMarketAdapter(scenario=scenario)
-        else:
-            adapter = SyntheticAdapter(scenario=scenario, base_price=2000.0 if m == "GOLD" else 100.0)
+        market_cfg = config.get(m, {})
+        adapter = get_adapter_for_market(m, market_cfg, scenario=scenario)
 
         agent = MarketAgent(
             market=m,

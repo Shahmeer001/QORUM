@@ -1,45 +1,66 @@
 """
 Binance BTC Market Data Adapter.
-Reads cached historical snapshot or research OHLCV data.
+Reads real 1-hour candlestick data from cache (backend/data_cache/btc_1h.csv).
+Binance timestamps are OPEN times in UTC.
+Enforces close time = open + 1h, and strictly filters candles closed
+at or before the US close cutoff (e.g. 21:00 UTC on 2026-11-20 in winter).
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import pandas as pd
 
 from app.adapters.base import MarketDataAdapter
+from app.config.settings import DATA_CACHE_DIR, get_us_close_utc
 from app.domain.models import Candle
 
 
 class BinanceBTCAdapter(MarketDataAdapter):
-    def __init__(self, csv_path: Path | None = None) -> None:
-        if csv_path is None:
-            # Fall back to research output if available
-            root = Path(__file__).resolve().parent.parent.parent.parent
-            self.csv_path = root / "research" / "output" / "btc_ohlcv.csv"
+    def __init__(self, csv_path: Optional[Path] = None) -> None:
+        self.csv_path = csv_path or (DATA_CACHE_DIR / "btc_1h.csv")
+        self._df: Optional[pd.DataFrame] = None
+
+    def _load_data(self) -> None:
+        if self._df is not None:
+            return
+
+        if not self.csv_path.exists():
+            raise FileNotFoundError(f"BTC 1h dataset not found at {self.csv_path}")
+
+        df = pd.read_csv(self.csv_path)
+        # Parse open time and compute close time (open + 1h)
+        df["open_dt"] = pd.to_datetime(df["timestamp"])
+        df["close_dt"] = df["open_dt"] + pd.Timedelta(hours=1)
+        df = df.sort_values("open_dt").reset_index(drop=True)
+        self._df = df
+
+    def get_candles(
+        self, symbol: str = "BTCUSDT", limit: int = 100, date_str: str | None = None
+    ) -> List[Candle]:
+        self._load_data()
+
+        if date_str is not None:
+            cutoff = get_us_close_utc(date_str)
+            filtered_df = self._df[self._df["close_dt"] <= cutoff]
         else:
-            self.csv_path = csv_path
+            filtered_df = self._df
 
-    def get_candles(self, symbol: str = "BTCUSDT", limit: int = 100) -> List[Candle]:
-        if self.csv_path.exists():
-            df = pd.read_csv(self.csv_path).tail(limit)
-            return [
-                Candle(
-                    timestamp=str(row["timestamp"]),
-                    open=float(row["Open"]),
-                    high=float(row["High"]),
-                    low=float(row["Low"]),
-                    close=float(row["Close"]),
-                    volume=float(row["Volume"]),
-                    quote_volume=float(row.get("QuoteVolume", 0.0)),
-                )
-                for _, row in df.iterrows()
-            ]
-
-        # Deterministic fallback when CSV hasn't been generated yet
-        from app.adapters.synthetic import SyntheticAdapter
-        return SyntheticAdapter(scenario="bull", base_price=88000.0).get_candles(symbol, limit)
+        subset = filtered_df.tail(limit)
+        return [
+            Candle(
+                timestamp=row["close_dt"].strftime("%Y-%m-%d %H:%M:%S+00:00"),
+                open=float(row["Open"]),
+                high=float(row["High"]),
+                low=float(row["Low"]),
+                close=float(row["Close"]),
+                volume=float(row["Volume"]),
+                quote_volume=float(row.get("QuoteVolume", 0.0)),
+            )
+            for _, row in subset.iterrows()
+        ]
 
     def get_latest(self, symbol: str = "BTCUSDT") -> Candle:
-        return self.get_candles(symbol, limit=1)[-1]
+        candles = self.get_candles(symbol, limit=1)
+        return candles[-1] if candles else Candle(timestamp="", open=0, high=0, low=0, close=0, volume=0)
