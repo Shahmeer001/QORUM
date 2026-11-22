@@ -41,3 +41,10 @@ class RiskStatus(str, Enum):
     OVERRIDDEN = "Overridden"
     REJECTED = "Rejected"
     QUORUM_NOT_MET = "Quorum Not Met"
+
+
+class DataStatus(str, Enum):
+    VALID = "VALID"
+    NO_DATA = "NO_DATA"
+    ERROR = "ERROR"
+    TIMEOUT = "TIMEOUT"

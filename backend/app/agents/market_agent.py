@@ -16,7 +16,7 @@ from app.agents.brains.fake_brain import FakeBrain
 from app.agents.state import AgentState
 from app.board.repository import BoardRepository
 from app.config.settings import AGENT_TIMEOUT_SECONDS, BRAIN
-from app.domain.enums import Action, MsgType, Role
+from app.domain.enums import Action, DataStatus, MsgType, Role
 from app.domain.models import Candle, Message
 from app.signals.knowledge_loader import load_market_knowledge
 
@@ -61,17 +61,24 @@ class MarketAgent:
         return self.adapter.get_candles(symbol=symbol, limit=100)
 
     def round_0_recommend(self, session_id: str, symbol: str) -> Message:
+        data_status = DataStatus.VALID
         try:
             candles = self._execute_with_safety(lambda: self._fetch_own_candles(symbol))
+            if not candles:
+                data_status = DataStatus.NO_DATA
             pos, conf, reason, ev = self._execute_with_safety(
                 lambda: self.brain.recommend(self.state, candles, self.knowledge)
             )
+            if pos == Action.ABSTAIN:
+                data_status = DataStatus.NO_DATA
         except TimeoutError as te:
             pos, conf = Action.ABSTAIN, 0.0
+            data_status = DataStatus.TIMEOUT
             reason = f"TimeoutError: Agent {self.market} execution timed out ({str(te)})."
             ev = ["Agent Timeout"]
         except Exception as e:
             pos, conf = Action.ABSTAIN, 0.0
+            data_status = DataStatus.ERROR
             reason = f"Exception: Agent {self.market} failed with {type(e).__name__}: {str(e)}"
             ev = [f"Exception: {type(e).__name__}"]
 
@@ -91,6 +98,7 @@ class MarketAgent:
             confidence=conf,
             reason=reason,
             evidence=ev,
+            data_status=data_status,
         )
         self.board.add_message(msg)
         return msg

@@ -1,15 +1,115 @@
 {
   "market": "US",
-  "symbol": "SPY",
-  "baseline": {
-    "total_trades": 15000,
-    "win_rate_pct": 53.2,
-    "high_profit_rate_pct": 11.5,
-    "big_loss_rate_pct": 8.9
+  "split": {
+    "learning_window": [
+      "2022-01-03",
+      "2024-12-31"
+    ],
+    "test_window_held_out": [
+      "2025-01-01",
+      "2026-11-20"
+    ],
+    "note": "Rebuilt strictly from learning window. Out-of-sample test window held out untouched."
   },
-  "macro_factors": {
-    "real_yield_correlation": -0.68,
-    "spx_breadth_threshold": 40.0,
-    "vix_threshold": 22.0
+  "baseline": {
+    "total_bars": 753,
+    "win_rate_pct": 52.74
+  },
+  "patterns": {
+    "D-D-D": {
+      "count": 77,
+      "win_rate_pct": 58.44,
+      "lift": 1.1082
+    },
+    "D-D-U": {
+      "count": 86,
+      "win_rate_pct": 50.0,
+      "lift": 0.9481
+    },
+    "D-U-U": {
+      "count": 94,
+      "win_rate_pct": 50.0,
+      "lift": 0.9481
+    },
+    "U-U-D": {
+      "count": 91,
+      "win_rate_pct": 53.85,
+      "lift": 1.021
+    },
+    "U-D-U": {
+      "count": 88,
+      "win_rate_pct": 54.55,
+      "lift": 1.0343
+    },
+    "D-U-D": {
+      "count": 80,
+      "win_rate_pct": 50.0,
+      "lift": 0.9481
+    },
+    "U-D-D": {
+      "count": 82,
+      "win_rate_pct": 47.56,
+      "lift": 0.9019
+    },
+    "U-U-U": {
+      "count": 106,
+      "win_rate_pct": 56.6,
+      "lift": 1.0733
+    },
+    "D-U-S": {
+      "count": 4,
+      "win_rate_pct": 50.0,
+      "lift": 0.9481
+    },
+    "U-S-U": {
+      "count": 4,
+      "win_rate_pct": 75.0,
+      "lift": 1.4222
+    },
+    "S-U-U": {
+      "count": 4,
+      "win_rate_pct": 75.0,
+      "lift": 1.4222
+    },
+    "U-U-S": {
+      "count": 7,
+      "win_rate_pct": 28.57,
+      "lift": 0.5418
+    },
+    "U-S-D": {
+      "count": 7,
+      "win_rate_pct": 42.86,
+      "lift": 0.8127
+    },
+    "S-D-D": {
+      "count": 4,
+      "win_rate_pct": 50.0,
+      "lift": 0.9481
+    },
+    "S-D-U": {
+      "count": 4,
+      "win_rate_pct": 100.0,
+      "lift": 1.8962
+    },
+    "U-D-S": {
+      "count": 4,
+      "win_rate_pct": 75.0,
+      "lift": 1.4222
+    },
+    "D-S-U": {
+      "count": 3,
+      "win_rate_pct": 33.33,
+      "lift": 0.6321
+    },
+    "D-S-D": {
+      "count": 1,
+      "win_rate_pct": 100.0,
+      "lift": 1.8962
+    },
+    "S-U-D": {
+      "count": 3,
+      "win_rate_pct": 0.0,
+      "lift": 0.0
+    }
   }
 }

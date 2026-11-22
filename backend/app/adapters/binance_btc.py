@@ -18,8 +18,11 @@ from app.domain.models import Candle
 
 
 class BinanceBTCAdapter(MarketDataAdapter):
-    def __init__(self, csv_path: Optional[Path] = None) -> None:
+    def __init__(
+        self, csv_path: Optional[Path] = None, current_date: Optional[str] = None
+    ) -> None:
         self.csv_path = csv_path or (DATA_CACHE_DIR / "btc_1h.csv")
+        self.current_date = current_date
         self._df: Optional[pd.DataFrame] = None
 
     def _load_data(self) -> None:
@@ -40,9 +43,10 @@ class BinanceBTCAdapter(MarketDataAdapter):
         self, symbol: str = "BTCUSDT", limit: int = 100, date_str: str | None = None
     ) -> List[Candle]:
         self._load_data()
+        effective_date_str = date_str or self.current_date
 
-        if date_str is not None:
-            cutoff = get_us_close_utc(date_str)
+        if effective_date_str is not None:
+            cutoff = get_us_close_utc(effective_date_str)
             filtered_df = self._df[self._df["close_dt"] <= cutoff]
         else:
             filtered_df = self._df

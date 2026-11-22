@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.domain.enums import Action, MarketId, Mode, MsgType, RiskStatus, Role
+from app.domain.enums import Action, DataStatus, MarketId, Mode, MsgType, RiskStatus, Role
 
 
 class Candle(BaseModel):
@@ -32,6 +32,7 @@ class Message(BaseModel):
     reason: str
     evidence: List[str] = Field(default_factory=list)
     is_visible: bool = True
+    data_status: DataStatus = DataStatus.VALID
     created_at: Optional[str] = Field(default=None, alias="posted_time")
 
     @property
@@ -55,6 +56,7 @@ class AgentSummary(BaseModel):
     confidence: float
     reason: str
     detail: str
+    data_status: DataStatus = DataStatus.VALID
 
 
 class SessionConfig(BaseModel):

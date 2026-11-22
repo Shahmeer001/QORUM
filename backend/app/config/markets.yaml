@@ -12,6 +12,8 @@ markets:
     active: true
     phase: FYP1
     adapter: app.adapters.us_spy.USMarketAdapter
+    commission: 0.0005  # 0.05%
+    slippage: 0.0002    # 0.02%
     open: false
     assets:
       - SPY
@@ -27,6 +29,8 @@ markets:
     active: true
     phase: FYP1
     adapter: app.adapters.binance_btc.BinanceBTCAdapter
+    commission: 0.0010  # 0.10%
+    slippage: 0.0005    # 0.05%
     open: true
     assets:
       - BTCUSDT

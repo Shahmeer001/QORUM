@@ -12,7 +12,7 @@ from app.agents.brains.rule_brain import RuleBrain
 from app.agents.market_agent import MarketAgent
 from app.agents.state import AgentState
 from app.board.memory_repo import MemoryBoardRepository
-from app.domain.enums import Action, Mode, MsgType, RiskStatus, Role
+from app.domain.enums import Action, DataStatus, Mode, MsgType, RiskStatus, Role
 from app.domain.models import AgentSummary, Candle, SessionConfig
 from app.orchestrator.session_orchestrator import SessionOrchestrator
 from app.supervisor.accuracy import AccuracyTracker
@@ -310,38 +310,39 @@ def test_orchestrator_health_and_quorum_events_written_to_board():
 
 def test_missing_data_abstain_does_not_update_weights():
     """
-    Follow-up 4: A missing-data ABSTAIN must not update accuracy weights.
+    Follow-up 4 / Small fix 1: A missing-data ABSTAIN with typed DataStatus.NO_DATA
+    must not update accuracy weights.
     """
     tracker = AccuracyTracker()
     initial_acc = tracker.get_accuracy("US")
     initial_weight = tracker.get_weight("US", Role.RELATED)
 
-    # 1. Attempt to update with an ABSTAIN action
+    # 1. Attempt to update with DataStatus.NO_DATA (typed flag)
+    acc_after_no_data = tracker.record_prediction(
+        market="US",
+        was_correct=False,
+        action=Action.ABSTAIN,
+        data_status=DataStatus.NO_DATA,
+    )
+    assert acc_after_no_data == initial_acc
+    assert tracker.get_weight("US", Role.RELATED) == initial_weight
+
+    # 2. Attempt to update with Action.ABSTAIN
     acc_after_abstain = tracker.record_prediction(
         market="US",
         was_correct=False,
         action=Action.ABSTAIN,
-        reason="Empty candle series",
+        data_status=DataStatus.VALID,
     )
     assert acc_after_abstain == initial_acc
     assert tracker.get_weight("US", Role.RELATED) == initial_weight
 
-    # 2. Attempt to update with a missing data reason
-    acc_after_missing = tracker.record_prediction(
-        market="US",
-        was_correct=False,
-        action=Action.HOLD,
-        reason="No candle data returned from adapter (missing data)",
-    )
-    assert acc_after_missing == initial_acc
-    assert tracker.get_weight("US", Role.RELATED) == initial_weight
-
-    # 3. Valid active prediction DOES update
+    # 3. Valid active prediction with DataStatus.VALID DOES update
     acc_after_real_loss = tracker.record_prediction(
         market="US",
         was_correct=False,
         action=Action.BUY,
-        reason="Active market call was incorrect",
+        data_status=DataStatus.VALID,
     )
     assert acc_after_real_loss < initial_acc
     assert tracker.get_weight("US", Role.RELATED) < initial_weight

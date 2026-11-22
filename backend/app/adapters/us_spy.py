@@ -18,9 +18,15 @@ from app.domain.models import Candle
 
 
 class USMarketAdapter(MarketDataAdapter):
-    def __init__(self, csv_path: Optional[Path] = None, scenario: str = "neutral") -> None:
+    def __init__(
+        self,
+        csv_path: Optional[Path] = None,
+        scenario: str = "neutral",
+        current_date: Optional[str] = None,
+    ) -> None:
         self.scenario = scenario
         self.csv_path = csv_path or (DATA_CACHE_DIR / "spy_daily.csv")
+        self.current_date = current_date
         self._df: Optional[pd.DataFrame] = None
         self._trading_dates: Optional[Set[date]] = None
 
@@ -45,9 +51,10 @@ class USMarketAdapter(MarketDataAdapter):
         self, symbol: str = "SPY", limit: int = 100, date_str: str | None = None
     ) -> List[Candle]:
         self._load_data()
+        effective_date_str = date_str or self.current_date
 
-        if date_str is not None:
-            dt = parser.parse(date_str).date() if "-" in date_str else datetime.strptime(date_str, "%d/%m/%Y").date()
+        if effective_date_str is not None:
+            dt = parser.parse(effective_date_str).date() if "-" in effective_date_str else datetime.strptime(effective_date_str, "%d/%m/%Y").date()
             # If weekend (Saturday=5, Sunday=6) or holiday (not in trading dates), market is closed -> 0 candles
             if dt.weekday() in (5, 6) or dt not in self._trading_dates:
                 return []

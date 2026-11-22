@@ -34,8 +34,11 @@ Source:           Binance Public REST API (https://api.binance.com/api/v3/klines
 SHA-256 Checksum: 9ee5cce53336453b325509bfe5ca3a7bfbc1ab545a000812aac059f0be426e40
 Gap Analysis:     Single missing hour: 2023-03-24 13:00:00+00:00.
                   On 2023-03-24, Binance experienced an unscheduled spot matching
-                  engine halt (11:30–14:00 UTC) resulting in no kline generation
+                  engine halt (11:27–14:00 UTC) resulting in no kline generation
                   for that hour. All remaining 42,791 hours are strictly contiguous.
+                  Engineering Note: In Python's ThreadPoolExecutor, a timed-out agent
+                  thread keeps running in the background until completion even after
+                  the orchestrator times out and records DataStatus.TIMEOUT.
 
 3. ACTIVE VS INACTIVE MARKETS (FYP1 Scope)
 --------------------------------------------------------------------------------
