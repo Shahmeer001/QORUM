@@ -71,6 +71,8 @@ class SimulationResult:
     max_drawdown_pct: float
     hit_rate_pct: float
     exposure_pct: float
+    exposure_adjusted_return_pct: float
+    sharpe_ratio: float
     trade_count: int
     turnover: float
     evaluation_days_count: int
@@ -459,6 +461,8 @@ class BarByBarSimulator:
             max_drawdown_pct=perf.max_drawdown_pct,
             hit_rate_pct=perf.hit_rate_pct,
             exposure_pct=perf.exposure_pct,
+            exposure_adjusted_return_pct=perf.exposure_adjusted_return_pct,
+            sharpe_ratio=perf.sharpe_ratio,
             trade_count=perf.trade_count,
             turnover=perf.turnover,
             evaluation_days_count=n_days,

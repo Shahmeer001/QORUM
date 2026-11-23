@@ -48,26 +48,31 @@ def run_experiments() -> None:
     print("Running Target: CRYPTO (US informs) [Sensitivity Allow Short]...")
     res_crypto_short = sim.run_simulation(target_market="CRYPTO", mode=Mode.DEBATE, allow_short=True)
 
-    print("\n" + "=" * 80)
-    print("WP4 EXPERIMENT RESULTS TABLE (REPORTED SEPARATELY)")
-    print("=" * 80)
-    print(f"{'Target Market':<10} | {'Shorting':<10} | {'Start Eq':<10} | {'End Eq':<10} | {'Net PnL ($)':<12} | {'Return (%)':<10} | {'Max DD (%)':<10} | {'Hit Rate':<10} | {'Exposure':<10} | {'Trades':<8} | {'Turnover':<8}")
-    print("-" * 115)
+    print("\n" + "=" * 125)
+    print("WP4 EXPERIMENT RESULTS TABLE — PRELIMINARY (FYP1)")
+    print("Mode: DEBATE MODE (Two sessions/day: US informed by CRYPTO; CRYPTO informed by US)")
+    print("Reported separately per target market (never averaged), evaluated on 474 evaluation days")
+    print("=" * 125)
+    print(
+        f"{'Target Market':<10} | {'Mode':<8} | {'Stance':<10} | {'Return (%)':<10} | {'Max DD (%)':<10} | "
+        f"{'Sharpe':<7} | {'Exp-Adj Ret':<11} | {'Hit Rate':<9} | {'Exposure':<9} | {'Trades':<7} | {'Turnover':<8} | {'Days':<5}"
+    )
+    print("-" * 125)
 
     runs = [
-        ("US (SPY)", "Long/Flat", res_us_long),
-        ("US (SPY)", "Long/Short", res_us_short),
-        ("CRYPTO (BTC)", "Long/Flat", res_crypto_long),
-        ("CRYPTO (BTC)", "Long/Short", res_crypto_short),
+        ("US (SPY)", "Debate", "Long/Flat", res_us_long),
+        ("US (SPY)", "Debate", "Long/Short", res_us_short),
+        ("CRYPTO (BTC)", "Debate", "Long/Flat", res_crypto_long),
+        ("CRYPTO (BTC)", "Debate", "Long/Short", res_crypto_short),
     ]
 
-    for label, short_lbl, r in runs:
+    for label, mode_lbl, short_lbl, r in runs:
         print(
-            f"{label:<10} | {short_lbl:<10} | ${r.initial_capital:<9.2f} | ${r.final_equity:<9.2f} | "
-            f"${r.pnl_dollars:<11.2f} | {r.pnl_pct:>9.2f}% | {r.max_drawdown_pct:>9.2f}% | "
-            f"{r.hit_rate_pct:>8.1f}% | {r.exposure_pct:>8.1f}% | {r.trade_count:>6} | {r.turnover:>7.2f}x"
+            f"{label:<10} | {mode_lbl:<8} | {short_lbl:<10} | {r.pnl_pct:>9.2f}% | {r.max_drawdown_pct:>9.2f}% | "
+            f"{r.sharpe_ratio:>7.2f} | {r.exposure_adjusted_return_pct:>10.2f}% | {r.hit_rate_pct:>8.1f}% | "
+            f"{r.exposure_pct:>8.1f}% | {r.trade_count:>7} | {r.turnover:>7.2f}x | {r.evaluation_days_count:<5}"
         )
-    print("=" * 115)
+    print("=" * 125)
 
     print("\nDegraded Days Count Summary:")
     print(f"Total Degraded Days excluded from main evaluation metrics: {len(sim.degraded_days)}")

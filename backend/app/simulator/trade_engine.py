@@ -161,6 +161,12 @@ def simulate_trades(
     exit_fill = execute_fill(final_action, exit_raw, friction, is_entry=False, is_short=is_short)
     net_pnl, total_comm, _ = calculate_trade_pnl(entry_fill, exit_fill, units, friction, is_short=is_short)
 
+    # Reflect realized exit friction on final equity point
+    equity[-1] = EquityPoint(
+        t=equity[-1].t,
+        v=round(initial_capital + net_pnl, 2),
+    )
+
     trades = [
         Trade(
             entry=candles[0].timestamp,

@@ -1,9 +1,20 @@
 """
 Simulation and Execution Performance Metrics.
 Strict, evidence-based metrics computation. No fabricated or default assumptions.
+
+Definitions:
+- Hit Rate (%): Percentage of completed round-trip trades with Net Realized PnL > 0.
+  Hit Rate = (Winning Trades / Total Closed Trades) * 100%. (0.0% if no closed trades).
+- Turnover: Total traded dollar volume (sum of all entry and exit execution notionals)
+  divided by initial capital.
+  Turnover = Total Traded Volume / Initial Capital.
+- Exposure-Adjusted Return (%): Net Return (%) divided by Exposure Ratio (exposure_pct / 100).
+- Annualized Sharpe Ratio: Mean daily percentage return divided by standard deviation of daily returns,
+  annualized by sqrt(252). If std dev == 0, returns 0.0.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import List
 from app.domain.models import EquityPoint, Trade
@@ -18,8 +29,11 @@ class PerformanceSummary:
     max_drawdown_pct: float
     hit_rate_pct: float
     exposure_pct: float
+    exposure_adjusted_return_pct: float
+    sharpe_ratio: float
     trade_count: int
     turnover: float
+    trading_days_count: int
 
 
 def compute_metrics(trades: List[Trade], equity: List[EquityPoint]) -> tuple[float, float, float]:
@@ -59,7 +73,7 @@ def compute_full_metrics(
     total_volume_traded: float,
     initial_capital: float,
 ) -> PerformanceSummary:
-    """Computes full quantitative trading metrics."""
+    """Computes full quantitative trading metrics including Sharpe and exposure-adjusted return."""
     if not equity:
         return PerformanceSummary(
             start_equity=initial_capital,
@@ -69,8 +83,11 @@ def compute_full_metrics(
             max_drawdown_pct=0.0,
             hit_rate_pct=0.0,
             exposure_pct=0.0,
+            exposure_adjusted_return_pct=0.0,
+            sharpe_ratio=0.0,
             trade_count=0,
             turnover=0.0,
+            trading_days_count=total_days,
         )
 
     start_v = equity[0].v
@@ -92,6 +109,31 @@ def compute_full_metrics(
     hit_rate = round((len(wins) / len(closed_trades)) * 100.0, 1) if closed_trades else 0.0
 
     exposure_pct = round((days_exposed / total_days) * 100.0, 1) if total_days > 0 else 0.0
+
+    # Exposure-adjusted return: return scaled by percentage of time exposed
+    exposure_ratio = days_exposed / total_days if total_days > 0 else 1.0
+    if exposure_ratio > 0:
+        exposure_adj_return = round(pnl_pct / exposure_ratio, 2)
+    else:
+        exposure_adj_return = 0.0
+
+    # Daily returns for Sharpe Ratio
+    daily_returns = []
+    for i in range(1, len(equity)):
+        prev = equity[i - 1].v
+        curr = equity[i].v
+        ret = (curr - prev) / prev if prev > 0 else 0.0
+        daily_returns.append(ret)
+
+    if len(daily_returns) > 1:
+        mean_ret = sum(daily_returns) / len(daily_returns)
+        variance = sum((r - mean_ret) ** 2 for r in daily_returns) / (len(daily_returns) - 1)
+        std_dev = math.sqrt(variance)
+        # Annualized Sharpe (assuming 252 trading days/year)
+        sharpe = round((mean_ret / std_dev) * math.sqrt(252), 2) if std_dev > 1e-8 else 0.0
+    else:
+        sharpe = 0.0
+
     turnover = round(total_volume_traded / initial_capital, 2) if initial_capital > 0 else 0.0
 
     return PerformanceSummary(
@@ -102,6 +144,9 @@ def compute_full_metrics(
         max_drawdown_pct=round(max_dd, 2),
         hit_rate_pct=hit_rate,
         exposure_pct=exposure_pct,
+        exposure_adjusted_return_pct=exposure_adj_return,
+        sharpe_ratio=sharpe,
         trade_count=len(closed_trades),
         turnover=turnover,
+        trading_days_count=total_days,
     )
