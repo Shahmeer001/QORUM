@@ -87,8 +87,8 @@ def test_weekends_us_adapter_no_new_candle_btc_works():
     assert len(us_adapter.get_candles(date_str=sunday)) == 0
     assert len(us_adapter.get_candles(date_str=monday)) > 0
 
-    # BTC trades 24/7/365
-    btc_candles = btc_adapter.get_candles(limit=10)
+    # BTC trades 24/7/365 (still honours the decision-date cutoff)
+    btc_candles = btc_adapter.get_candles(date_str=monday, limit=10)
     assert len(btc_candles) > 0
 
 

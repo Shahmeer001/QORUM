@@ -53,16 +53,19 @@ class USMarketAdapter(MarketDataAdapter):
         self._load_data()
         effective_date_str = date_str or self.current_date
 
-        if effective_date_str is not None:
-            dt = parser.parse(effective_date_str).date() if "-" in effective_date_str else datetime.strptime(effective_date_str, "%d/%m/%Y").date()
-            # If weekend (Saturday=5, Sunday=6) or holiday (not in trading dates), market is closed -> 0 candles
-            if dt.weekday() in (5, 6) or dt not in self._trading_dates:
-                return []
+        # Temporal guard (default-deny): a decision date is mandatory. Without
+        # one the adapter returns NO candles, so no code path can leak bars
+        # that close after the intended cutoff. Callers must set `current_date`
+        # (per session) or pass `date_str` explicitly.
+        if effective_date_str is None:
+            return []
 
-            filtered_df = self._df[self._df["parsed_date"] <= dt]
-        else:
-            filtered_df = self._df
+        dt = parser.parse(effective_date_str).date() if "-" in effective_date_str else datetime.strptime(effective_date_str, "%d/%m/%Y").date()
+        # If weekend (Saturday=5, Sunday=6) or holiday (not in trading dates), market is closed -> 0 candles
+        if dt.weekday() in (5, 6) or dt not in self._trading_dates:
+            return []
 
+        filtered_df = self._df[self._df["parsed_date"] <= dt]
         subset = filtered_df.tail(limit)
         return [
             Candle(

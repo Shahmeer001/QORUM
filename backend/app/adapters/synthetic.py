@@ -13,11 +13,15 @@ from app.domain.models import Candle
 
 
 class SyntheticAdapter(MarketDataAdapter):
-    def __init__(self, scenario: str = "bull", base_price: float = 2000.0) -> None:
+    def __init__(self, scenario: str = "bull", base_price: float = 2000.0, current_date: str | None = None) -> None:
         self.scenario = scenario.lower()
         self.base_price = base_price
+        # Accepted for interface parity with the real adapters. Synthetic data is
+        # generated on demand (FYP2/inactive markets), so there is no real future
+        # to deny; the attribute is stored but does not filter the generated series.
+        self.current_date = current_date
 
-    def get_candles(self, symbol: str = "XAUUSD", limit: int = 100) -> List[Candle]:
+    def get_candles(self, symbol: str = "XAUUSD", limit: int = 100, date_str: str | None = None) -> List[Candle]:
         now = datetime(2026, 11, 10, 19, 0, 0, tzinfo=timezone.utc)
         candles: List[Candle] = []
 

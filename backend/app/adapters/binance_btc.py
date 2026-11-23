@@ -45,12 +45,15 @@ class BinanceBTCAdapter(MarketDataAdapter):
         self._load_data()
         effective_date_str = date_str or self.current_date
 
-        if effective_date_str is not None:
-            cutoff = get_us_close_utc(effective_date_str)
-            filtered_df = self._df[self._df["close_dt"] <= cutoff]
-        else:
-            filtered_df = self._df
+        # Temporal guard (default-deny): a decision date is mandatory. Without
+        # one the adapter returns NO candles, so no code path can leak bars
+        # that close after the intended cutoff. Callers must set `current_date`
+        # (per session) or pass `date_str` explicitly.
+        if effective_date_str is None:
+            return []
 
+        cutoff = get_us_close_utc(effective_date_str)
+        filtered_df = self._df[self._df["close_dt"] <= cutoff]
         subset = filtered_df.tail(limit)
         return [
             Candle(

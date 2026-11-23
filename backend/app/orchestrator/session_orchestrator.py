@@ -154,12 +154,14 @@ class SessionOrchestrator:
         """
         session_id = f"QRM-{datetime.now(timezone.utc).strftime('%Y')}-{uuid.uuid4().hex[:3].upper()}"
 
-        # 1. Build market agents
+        # 1. Build market agents (temporal guard: thread the decision date into
+        #    every adapter so the default-deny cutoff is enforced).
         agents = build_agents(
             board=self.board,
             target_market=config.target,
             related_markets=config.related,
             scenario=config.scenario,
+            decision_date=config.day,
         )
 
         now_str = datetime.now(timezone.utc).strftime("%H:%M UTC")

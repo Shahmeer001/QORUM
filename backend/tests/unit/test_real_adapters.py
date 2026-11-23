@@ -16,7 +16,7 @@ from app.modes.runner import get_adapter_for_market, load_markets_config
 def test_us_market_adapter_loads_real_spy_data():
     """USMarketAdapter loads real daily data from spy_daily.csv and parses day-first."""
     adapter = USMarketAdapter()
-    candles = adapter.get_candles(symbol="SPY", limit=50)
+    candles = adapter.get_candles(symbol="SPY", limit=50, date_str="2026-11-20")
 
     assert len(candles) == 50
     # Spot-check realistic SPY price range
@@ -46,7 +46,7 @@ def test_us_market_adapter_weekend_and_holiday_closures():
 def test_binance_btc_adapter_loads_real_hourly_data():
     """BinanceBTCAdapter loads real 1h candles from btc_1h.csv with close time = open + 1h."""
     adapter = BinanceBTCAdapter()
-    candles = adapter.get_candles(symbol="BTCUSDT", limit=24)
+    candles = adapter.get_candles(symbol="BTCUSDT", limit=24, date_str="2026-11-20")
 
     assert len(candles) == 24
     # Realistic Bitcoin prices in 2022-2026
