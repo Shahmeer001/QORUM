@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-Today, **Work Packages 1, 3, and 4** were completed, verified, and committed into the repository under strict honesty constraints (no hard-coded curves, no synthetic active data, strict temporal separation, and full execution friction accounted for). The full automated test suite passes with **49/49 tests passing** (`pytest backend/tests`).
+Today, **Work Packages 1, 3, and 4** were completed, verified, and committed into the repository under strict honesty constraints (no hard-coded curves, no synthetic active data, strict temporal separation, and full execution friction accounted for). The full automated test suite passes with **53/53 tests passing** (`pytest backend/tests`; count grew from 49 after the WP4 verification commit `83500c5`).
 
 The live system successfully ran end-to-end multi-agent debates, real bar-by-bar backtesting across **474 evaluation days** with **215 degraded days** strictly tracked, and served live API queries to the TanStack/React frontend.
 
@@ -61,6 +61,8 @@ The live system successfully ran end-to-end multi-agent debates, real bar-by-bar
 ---
 
 ## 3. WP4 Out-of-Sample Results Table (2025-01-01 to 2026-11-20)
+
+> ⚠️ **STALE / VOID — DO NOT CITE.** These numbers were produced by the simulator *before* the correctness fixes in commit `e6eadb4` (Sharpe sign correctness, short-selling cash accounting, and the buy-and-hold exposure-scaled benchmark). The earlier test-window run happened before those fixes with the rules otherwise unchanged, so these figures are void. Valid test-window numbers will be generated exactly once from the frozen tag `rules-freeze-v1`, recorded in `docs/status/protocol.md`. See that protocol before quoting any result.
 
 *Reported separately per target market (never averaged), with slippage and commission deducted from every trade:*
 
