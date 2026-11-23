@@ -60,6 +60,23 @@ class DailyDecisionRecord:
 
 
 @dataclass
+class BuyHoldBenchmark:
+    """Buy-and-hold benchmark using the SAME fill rule as the strategy.
+
+    Entry: next-open fill after the first decision (US: next US trading day's
+    open; CRYPTO: the first 1h candle open at the 21:00 UTC cutoff on the first
+    decision day). Exit / final mark: the last evaluation day's close (same mark
+    the strategy uses to close out). Friction matches the strategy's market.
+    """
+    return_pct: float
+    entry_fill_price: float
+    entry_date: str
+    exit_fill_price: float
+    exit_date: str
+    days_exposed: int
+
+
+@dataclass
 class SimulationResult:
     target_market: str
     mode: Mode
@@ -71,7 +88,7 @@ class SimulationResult:
     max_drawdown_pct: float
     hit_rate_pct: float
     exposure_pct: float
-    exposure_adjusted_return_pct: float
+    buy_hold_exposure_scaled_return_pct: float
     sharpe_ratio: float
     trade_count: int
     turnover: float
@@ -81,6 +98,19 @@ class SimulationResult:
     equity_curve: List[EquityPoint]
     daily_decisions: List[DailyDecisionRecord]
     degraded_days: List[Dict[str, str]]
+    # Buy-and-hold benchmark (same fill rule + same final mark as the strategy).
+    benchmark_buy_hold_return_pct: float = 0.0
+    benchmark_buy_hold_entry_price: float = 0.0
+    benchmark_buy_hold_entry_date: str = ""
+    benchmark_buy_hold_exit_price: float = 0.0
+    benchmark_buy_hold_exit_date: str = ""
+    # Leverage audit (Part B4): proves position size never exceeds 100% and no
+    # leverage is used. max_entry_leverage_ratio = max(entry_notional / cash at
+    # entry) across every entry; max_gross_exposure_ratio = max(units*close /
+    # daily_equity) across every held day. Both must be <= ~1.0 (a small overshoot
+    # comes only from commission/slippage reducing equity below gross).
+    max_entry_leverage_ratio: float = 0.0
+    max_gross_exposure_ratio: float = 0.0
 
 
 class BarByBarSimulator:
@@ -162,6 +192,57 @@ class BarByBarSimulator:
 
             curr += timedelta(days=1)
 
+    def compute_buy_and_hold(self, target_market: str) -> BuyHoldBenchmark:
+        """Buy-and-hold benchmark using the SAME fill rule as the strategy.
+
+        - Entry: next-open fill after the first decision (US: next US trading
+          day's open after the first evaluation day; CRYPTO: the first 1h candle
+          open at the 21:00 UTC cutoff on the first evaluation day).
+        - Exit / final mark: the last evaluation day's close, which is the same
+          mark the strategy uses to close out any remaining position.
+        - Friction: the target market's configured commission + slippage.
+
+        Returns the return percentage plus entry/exit prices and dates so they
+        can be reported (Part B3).
+        """
+        target = target_market.upper()
+        friction = get_market_friction(target)
+        all_eval_days = self.evaluation_days
+        n_days = len(all_eval_days)
+
+        if n_days < 2:
+            return BuyHoldBenchmark(0.0, 0.0, "", 0.0, "", 0)
+
+        if target == "US":
+            spy_by_date = {row["parsed_date"]: row for _, row in self.spy_df.iterrows()}
+            # Same fill as the strategy: next US trading day's open after day 0.
+            entry_date = all_eval_days[1]
+            exit_date = all_eval_days[-1]
+            entry_raw = float(spy_by_date[entry_date]["Open"])
+            exit_raw = float(spy_by_date[exit_date]["Close"])
+        else:  # CRYPTO
+            # Same fill as the strategy: first 1h candle open at cutoff on day 0.
+            entry_cutoff = get_us_close_utc(all_eval_days[0].isoformat())
+            entry_candle = self.btc_df[self.btc_df["open_dt"] >= entry_cutoff].head(1)
+            entry_raw = float(entry_candle.iloc[0]["Open"])
+            entry_date = entry_candle.iloc[0]["open_dt"].date()
+            exit_cutoff = get_us_close_utc(all_eval_days[-1].isoformat())
+            exit_candle = self.btc_df[self.btc_df["close_dt"] <= exit_cutoff].iloc[-1]
+            exit_raw = float(exit_candle["Close"])
+            exit_date = exit_candle["close_dt"].date()
+
+        entry_fill = execute_fill(Action.BUY, entry_raw, friction, is_entry=True)
+        exit_fill = execute_fill(Action.BUY, exit_raw, friction, is_entry=False)
+        return_pct = round(((exit_fill - entry_fill) / entry_fill) * 100.0, 2)
+        return BuyHoldBenchmark(
+            return_pct=return_pct,
+            entry_fill_price=round(entry_fill, 4),
+            entry_date=entry_date.isoformat() if isinstance(entry_date, date) else str(entry_date),
+            exit_fill_price=round(exit_fill, 4),
+            exit_date=exit_date.isoformat() if isinstance(exit_date, date) else str(exit_date),
+            days_exposed=n_days,
+        )
+
     def run_simulation(
         self,
         target_market: str,
@@ -197,6 +278,9 @@ class BarByBarSimulator:
 
         total_volume_traded = 0.0
         days_exposed = 0
+        # Leverage audit accumulators (Part B4).
+        max_entry_leverage_ratio = 0.0
+        max_gross_exposure_ratio = 0.0
 
         # Pre-index SPY rows by date for O(1) lookups
         spy_by_date = {row["parsed_date"]: row for _, row in self.spy_df.iterrows()}
@@ -326,8 +410,8 @@ class BarByBarSimulator:
 
                     if current_pos == 1:
                         cash += exit_notional - (exit_notional * friction.commission)
-                    else:  # Short cover
-                        cash += gross - (exit_notional * friction.commission)
+                    else:  # Short cover: cash was increased by entry_notional at entry, now reduced by buyback + exit commission
+                        cash -= (exit_notional + (exit_notional * friction.commission))
 
                     trades.append(
                         Trade(
@@ -358,30 +442,48 @@ class BarByBarSimulator:
                     entry_fill_price = entry_fill
                     entry_time_str = exec_time_str
 
-                    # Sizing: deploy available cash (long) or initial capital (short)
-                    capital_to_deploy = cash if target_pos == 1 else self.initial_capital
+                    # Sizing: deploy current cash portfolio (100% position size, zero leverage)
+                    cash_before_entry = cash
+                    capital_to_deploy = cash
                     units = capital_to_deploy / entry_fill if entry_fill > 0 else 0.0
                     entry_notional = units * entry_fill
                     entry_comm = entry_notional * friction.commission
                     total_volume_traded += entry_notional
                     entry_comm_paid = entry_comm
+                    # Leverage audit: entry notional must not exceed available cash.
+                    if cash_before_entry > 0:
+                        max_entry_leverage_ratio = max(
+                            max_entry_leverage_ratio,
+                            entry_notional / cash_before_entry,
+                        )
 
                     if target_pos == 1:
                         cash -= (entry_notional + entry_comm)
                     else:
-                        cash -= entry_comm
+                        # Shorting: receives short sale proceeds into cash account, pays entry commission
+                        cash += (entry_notional - entry_comm)
 
                     current_pos = target_pos
 
-            # 8. Mark-to-market daily equity tracking
+            # 8. Mark-to-market daily equity tracking (Zero leverage, exact balance sheet)
             if current_pos == 1:
                 daily_equity = cash + units * current_close_price
                 days_exposed += 1
             elif current_pos == -1:
-                daily_equity = cash + self.initial_capital + units * (entry_fill_price - current_close_price)
+                # Cash includes initial equity + short sale proceeds; liability is current buyback cost
+                daily_equity = cash - units * current_close_price
                 days_exposed += 1
             else:
                 daily_equity = cash
+
+            # Leverage audit: gross exposure (units * mark) must never exceed equity
+            # by more than a tiny tolerance (the only overshoot is commission/slippage
+            # reducing equity below gross). Proves no leverage and position <= 100%.
+            if current_pos != 0 and daily_equity > 0 and units > 0:
+                gross = units * current_close_price
+                max_gross_exposure_ratio = max(
+                    max_gross_exposure_ratio, gross / daily_equity
+                )
 
             equity_curve.append(
                 EquityPoint(
@@ -426,7 +528,7 @@ class BarByBarSimulator:
             if current_pos == 1:
                 cash += exit_notional - (exit_notional * friction.commission)
             else:
-                cash += gross - (exit_notional * friction.commission)
+                cash -= (exit_notional + (exit_notional * friction.commission))
 
             trades.append(
                 Trade(
@@ -440,7 +542,10 @@ class BarByBarSimulator:
             )
             equity_curve[-1] = EquityPoint(t=all_eval_days[-1].isoformat(), v=round(cash, 2))
 
-        # 10. Compute quantitative performance metrics
+        # 10. Buy-and-hold benchmark (same fill rule + same final mark as the strategy)
+        bh = self.compute_buy_and_hold(target)
+
+        # 11. Compute quantitative performance metrics
         perf = compute_full_metrics(
             trades=trades,
             equity=equity_curve,
@@ -448,6 +553,7 @@ class BarByBarSimulator:
             days_exposed=days_exposed,
             total_volume_traded=total_volume_traded,
             initial_capital=self.initial_capital,
+            benchmark_buy_hold_return_pct=bh.return_pct,
         )
 
         return SimulationResult(
@@ -461,7 +567,7 @@ class BarByBarSimulator:
             max_drawdown_pct=perf.max_drawdown_pct,
             hit_rate_pct=perf.hit_rate_pct,
             exposure_pct=perf.exposure_pct,
-            exposure_adjusted_return_pct=perf.exposure_adjusted_return_pct,
+            buy_hold_exposure_scaled_return_pct=perf.buy_hold_exposure_scaled_return_pct,
             sharpe_ratio=perf.sharpe_ratio,
             trade_count=perf.trade_count,
             turnover=perf.turnover,
@@ -471,4 +577,11 @@ class BarByBarSimulator:
             equity_curve=equity_curve,
             daily_decisions=daily_decisions,
             degraded_days=self.degraded_days,
+            benchmark_buy_hold_return_pct=bh.return_pct,
+            benchmark_buy_hold_entry_price=bh.entry_fill_price,
+            benchmark_buy_hold_entry_date=bh.entry_date,
+            benchmark_buy_hold_exit_price=bh.exit_fill_price,
+            benchmark_buy_hold_exit_date=bh.exit_date,
+            max_entry_leverage_ratio=round(max_entry_leverage_ratio, 6),
+            max_gross_exposure_ratio=round(max_gross_exposure_ratio, 6),
         )

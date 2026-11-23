@@ -55,7 +55,7 @@ def run_experiments() -> None:
     print("=" * 125)
     print(
         f"{'Target Market':<10} | {'Mode':<8} | {'Stance':<10} | {'Return (%)':<10} | {'Max DD (%)':<10} | "
-        f"{'Sharpe':<7} | {'Exp-Adj Ret':<11} | {'Hit Rate':<9} | {'Exposure':<9} | {'Trades':<7} | {'Turnover':<8} | {'Days':<5}"
+        f"{'Sharpe':<7} | {'B&H xExpo':<11} | {'Hit Rate':<9} | {'Exposure':<9} | {'Trades':<7} | {'Turnover':<8} | {'Days':<5}"
     )
     print("-" * 125)
 
@@ -69,10 +69,19 @@ def run_experiments() -> None:
     for label, mode_lbl, short_lbl, r in runs:
         print(
             f"{label:<10} | {mode_lbl:<8} | {short_lbl:<10} | {r.pnl_pct:>9.2f}% | {r.max_drawdown_pct:>9.2f}% | "
-            f"{r.sharpe_ratio:>7.2f} | {r.exposure_adjusted_return_pct:>10.2f}% | {r.hit_rate_pct:>8.1f}% | "
+            f"{r.sharpe_ratio:>7.2f} | {r.buy_hold_exposure_scaled_return_pct:>10.2f}% | {r.hit_rate_pct:>8.1f}% | "
             f"{r.exposure_pct:>8.1f}% | {r.trade_count:>7} | {r.turnover:>7.2f}x | {r.evaluation_days_count:<5}"
         )
     print("=" * 125)
+
+    # Buy-and-hold benchmark entry/exit prices and dates (Part B3).
+    print("\nBuy-and-Hold Benchmark (same fill rule + same final mark as the strategy):")
+    for label, _, _, r in runs:
+        print(
+            f"  {label:<14}: entry {r.benchmark_buy_hold_entry_price:.2f} @ {r.benchmark_buy_hold_entry_date} | "
+            f"exit {r.benchmark_buy_hold_exit_price:.2f} @ {r.benchmark_buy_hold_exit_date} | "
+            f"B&H return {r.benchmark_buy_hold_return_pct:.2f}% | B&H x exposure {r.buy_hold_exposure_scaled_return_pct:.2f}%"
+        )
 
     print("\nDegraded Days Count Summary:")
     print(f"Total Degraded Days excluded from main evaluation metrics: {len(sim.degraded_days)}")

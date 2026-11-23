@@ -6,11 +6,17 @@ Definitions:
 - Hit Rate (%): Percentage of completed round-trip trades with Net Realized PnL > 0.
   Hit Rate = (Winning Trades / Total Closed Trades) * 100%. (0.0% if no closed trades).
 - Turnover: Total traded dollar volume (sum of all entry and exit execution notionals)
-  divided by initial capital.
-  Turnover = Total Traded Volume / Initial Capital.
-- Exposure-Adjusted Return (%): Net Return (%) divided by Exposure Ratio (exposure_pct / 100).
-- Annualized Sharpe Ratio: Mean daily percentage return divided by standard deviation of daily returns,
-  annualized by sqrt(252). If std dev == 0, returns 0.0.
+  divided by initial capital.  Turnover = Total Traded Volume / Initial Capital.
+- Buy-and-Hold Exposure-Scaled Return (%): the buy-and-hold benchmark return
+  scaled to the strategy's exposure level (benchmark_return_pct * exposure_ratio).
+  This replaces the old "exposure-adjusted return" (return / exposure), which
+  inflated strategy returns. Comparing the strategy return to the buy-and-hold
+  return *at the same exposure* is the fair benchmark.
+- Annualized Sharpe Ratio: Mean daily percentage return divided by standard
+  deviation of daily returns, annualized by sqrt(252). Because the standard
+  deviation is strictly positive, sign(Sharpe) == sign(mean daily return): a
+  falling equity curve (negative mean daily return) always yields a negative
+  Sharpe. If std dev == 0, returns 0.0.
 """
 from __future__ import annotations
 
@@ -29,7 +35,7 @@ class PerformanceSummary:
     max_drawdown_pct: float
     hit_rate_pct: float
     exposure_pct: float
-    exposure_adjusted_return_pct: float
+    buy_hold_exposure_scaled_return_pct: float
     sharpe_ratio: float
     trade_count: int
     turnover: float
@@ -72,8 +78,9 @@ def compute_full_metrics(
     days_exposed: int,
     total_volume_traded: float,
     initial_capital: float,
+    benchmark_buy_hold_return_pct: float = 0.0,
 ) -> PerformanceSummary:
-    """Computes full quantitative trading metrics including Sharpe and exposure-adjusted return."""
+    """Computes full quantitative trading metrics including Sharpe and buy-and-hold exposure-scaled return."""
     if not equity:
         return PerformanceSummary(
             start_equity=initial_capital,
@@ -83,7 +90,7 @@ def compute_full_metrics(
             max_drawdown_pct=0.0,
             hit_rate_pct=0.0,
             exposure_pct=0.0,
-            exposure_adjusted_return_pct=0.0,
+            buy_hold_exposure_scaled_return_pct=0.0,
             sharpe_ratio=0.0,
             trade_count=0,
             turnover=0.0,
@@ -110,12 +117,9 @@ def compute_full_metrics(
 
     exposure_pct = round((days_exposed / total_days) * 100.0, 1) if total_days > 0 else 0.0
 
-    # Exposure-adjusted return: return scaled by percentage of time exposed
-    exposure_ratio = days_exposed / total_days if total_days > 0 else 1.0
-    if exposure_ratio > 0:
-        exposure_adj_return = round(pnl_pct / exposure_ratio, 2)
-    else:
-        exposure_adj_return = 0.0
+    # Buy-and-hold return scaled to the strategy's exposure level (e.g. B&H * exposure_ratio)
+    exposure_ratio = days_exposed / total_days if total_days > 0 else 0.0
+    bh_scaled_return = round(benchmark_buy_hold_return_pct * exposure_ratio, 2)
 
     # Daily returns for Sharpe Ratio
     daily_returns = []
@@ -129,8 +133,14 @@ def compute_full_metrics(
         mean_ret = sum(daily_returns) / len(daily_returns)
         variance = sum((r - mean_ret) ** 2 for r in daily_returns) / (len(daily_returns) - 1)
         std_dev = math.sqrt(variance)
-        # Annualized Sharpe (assuming 252 trading days/year)
-        sharpe = round((mean_ret / std_dev) * math.sqrt(252), 2) if std_dev > 1e-8 else 0.0
+        if std_dev > 1e-8:
+            # Annualized Sharpe (252 trading days/year). Because std_dev is
+            # strictly positive, sign(Sharpe) == sign(mean daily return) by
+            # construction, which is the requirement: a falling equity curve
+            # (negative mean daily return) must yield a negative Sharpe.
+            sharpe = round((mean_ret / std_dev) * math.sqrt(252), 2)
+        else:
+            sharpe = 0.0
     else:
         sharpe = 0.0
 
@@ -144,7 +154,7 @@ def compute_full_metrics(
         max_drawdown_pct=round(max_dd, 2),
         hit_rate_pct=hit_rate,
         exposure_pct=exposure_pct,
-        exposure_adjusted_return_pct=exposure_adj_return,
+        buy_hold_exposure_scaled_return_pct=bh_scaled_return,
         sharpe_ratio=sharpe,
         trade_count=len(closed_trades),
         turnover=turnover,
