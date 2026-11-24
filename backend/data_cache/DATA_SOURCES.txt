@@ -14,12 +14,14 @@ Columns:          Date, Open, High, Low, Close, Volume
 Pricing:          RAW (unadjusted close)
 Date Format:      Day-first ("DD/MM/YYYY HH:MM:SS"), parsed day-first, date only.
                   Early closes handled by markets.yaml holiday calendar.
-SHA-256 Checksum: 2d546129fb72643d618799f5d66ed9ed863e83139d5287346d0cd0eb05144a57
+SHA-256 Checksum: c617dbb50402e607d9a3fa136a5f75b24065f0e772341a7fabb4a2b87211131a
 Gap Analysis:     48 non-trading business days (Mon-Fri) across 2022-2026, perfectly
                   matching all official NYSE holidays (Martin Luther King Jr. Day,
                   Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day,
                   Labor Day, Thanksgiving, Christmas Day, New Year's Day, and national days).
                   Zero unexpected gaps.
+                  Corrections: 2025-05-22 stale row replaced from Nasdaq crosscheck.
+                  See backend/data_cache/SPY_CORRECTIONS.md for full audit trail.
 
 2. CRYPTO MARKET DATA (BTC Hourly)
 --------------------------------------------------------------------------------
