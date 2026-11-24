@@ -19,7 +19,9 @@ class MsgType(str, Enum):
 
 class Mode(str, Enum):
     SINGLE = "single"
-    SILENT = "silent"
+    SILENT = "silent"  # legacy alias; behaves as silent-weighted
+    SILENT_UNWEIGHTED = "silent_unweighted"
+    SILENT_WEIGHTED = "silent_weighted"
     DEBATE = "debate"
 
 

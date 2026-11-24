@@ -24,12 +24,13 @@ class DebateLoop:
         board: BoardRepository,
         max_turns: int = 3,
         min_margin: float = 0.0,
+        accuracy_tracker: AccuracyTracker | None = None,
     ) -> None:
         self.agents = agents
         self.board = board
         self.max_turns = min(max_turns, TURN_CAP)
         self.min_margin = min_margin
-        self.accuracy_tracker = AccuracyTracker()
+        self.accuracy_tracker = accuracy_tracker or AccuracyTracker()
         self.events: List[SupervisorEventLog] = []
 
     def run(
@@ -54,7 +55,7 @@ class DebateLoop:
         initial_positions = {m.from_market: m.position for m in r0_messages}
         if len(set(initial_positions.values())) == 1 and self.max_turns <= 1:
             turns_used = 1
-            summaries = self._build_summaries()
+            summaries = self._build_summaries(session_id)
             consensus, _, _ = calculate_consensus(summaries, self.accuracy_tracker)
             return turns_used, consensus, summaries, self.events
 
@@ -105,16 +106,16 @@ class DebateLoop:
             )
         )
 
-        summaries = self._build_summaries()
+        summaries = self._build_summaries(session_id)
         consensus, _, _ = calculate_consensus(
             summaries, self.accuracy_tracker, min_margin=self.min_margin
         )
         return turns_used, consensus, summaries, self.events
 
-    def _build_summaries(self) -> List[AgentSummary]:
+    def _build_summaries(self, session_id: str) -> List[AgentSummary]:
         summaries: List[AgentSummary] = []
         for market, agent in self.agents.items():
-            msgs = [m for m in self.board.get_all("") if m.from_market == market]
+            msgs = [m for m in self.board.get_all(session_id) if m.from_market == market]
             init_pos = msgs[0].position if msgs else agent.state.current_position
             final_pos = agent.state.current_position
             summaries.append(

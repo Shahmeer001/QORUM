@@ -28,14 +28,13 @@ import pandas as pd
 
 from app.adapters.binance_btc import BinanceBTCAdapter
 from app.adapters.us_spy import USMarketAdapter
+from app.agents.brains.base import Brain
 from app.agents.market_agent import MarketAgent
 from app.board.memory_repo import MemoryBoardRepository
 from app.config.settings import DATA_CACHE_DIR, INITIAL_CAPITAL, get_us_close_utc
-from app.domain.enums import Action, Mode, RiskStatus, Role
+from app.domain.enums import Action, DataStatus, Mode, RiskStatus, Role
 from app.domain.models import Candle, EquityPoint, Trade
-from app.modes.debate import run_debate_mode
-from app.modes.silent import run_silent_mode
-from app.modes.single import run_single_mode
+from app.modes.dispatch import run_mode
 from app.risk.risk_layer import RiskLayer
 from app.simulator.metrics import PerformanceSummary, compute_full_metrics
 from app.simulator.trade_engine import (
@@ -44,6 +43,8 @@ from app.simulator.trade_engine import (
     execute_fill,
     get_market_friction,
 )
+from app.supervisor.accuracy import AccuracyTracker
+from app.supervisor.accuracy_bookkeeper import apply_outcome
 
 
 @dataclass
@@ -111,6 +112,8 @@ class SimulationResult:
     # comes only from commission/slippage reducing equity below gross).
     max_entry_leverage_ratio: float = 0.0
     max_gross_exposure_ratio: float = 0.0
+    # Final learned accuracy per market for this target's replay (Part 0.1).
+    final_accuracy: Dict[str, float] = field(default_factory=dict)
 
 
 class BarByBarSimulator:
@@ -243,6 +246,20 @@ class BarByBarSimulator:
             days_exposed=n_days,
         )
 
+    def _target_close_at(self, target: str, eval_date: date) -> Optional[float]:
+        """Target asset close at the US-close cutoff on a given evaluation day."""
+        if target == "US":
+            row = self.spy_df[self.spy_df["parsed_date"] == eval_date]
+            if len(row) == 0:
+                return None
+            return float(row.iloc[0]["Close"])
+        # CRYPTO: last 1h candle closing at or before the US-close cutoff.
+        cutoff = get_us_close_utc(eval_date.isoformat())
+        sub = self.btc_df[self.btc_df["close_dt"] <= cutoff]
+        if len(sub) == 0:
+            return None
+        return float(sub.iloc[-1]["Close"])
+
     def run_simulation(
         self,
         target_market: str,
@@ -252,10 +269,12 @@ class BarByBarSimulator:
         max_vol: float = 2.5,
         max_dd: float = 5.0,
         min_margin: float = 0.0,
+        brain: Optional[Brain] = None,
     ) -> SimulationResult:
         """
         Executes bar-by-bar simulation for the chosen target market across all evaluation days.
         Reports strictly for target_market.
+        `brain` (optional) overrides the agent brain for deterministic tests.
         """
         target = target_market.upper()
         friction = get_market_friction(target)
@@ -287,12 +306,25 @@ class BarByBarSimulator:
         all_eval_days = self.evaluation_days
         n_days = len(all_eval_days)
 
+        # One accuracy tracker per target (Part 0.1); learned across the replay.
+        accuracy_tracker = AccuracyTracker()
+        prev_target_close: Optional[float] = None
+        prev_finals: Dict[str, Tuple[Action, DataStatus]] = {}
+
         for i, eval_date in enumerate(all_eval_days):
             d_str = eval_date.isoformat()
 
             # 1. Temporal boundary: date_str locks adapters to candles closed <= cutoff on eval_date
             us_adapter.current_date = d_str
             btc_adapter.current_date = d_str
+
+            # Apply the previous decision day's outcome (no look-ahead) BEFORE
+            # today's decision: score day i-1's calls against the target return
+            # over [close[i-1], close[i]], where close[i] has just closed.
+            curr_target_close = self._target_close_at(target, eval_date)
+            if i >= 1 and prev_target_close is not None and curr_target_close is not None:
+                realised = (curr_target_close - prev_target_close) / prev_target_close
+                apply_outcome(accuracy_tracker, prev_finals, realised)
 
             # 2. Setup board & agents with appropriate roles
             board = MemoryBoardRepository()
@@ -302,43 +334,31 @@ class BarByBarSimulator:
                     adapter=us_adapter,
                     board=board,
                     role=Role.CHOSEN if target == "US" else Role.RELATED,
+                    brain=brain,
                 ),
                 "CRYPTO": MarketAgent(
                     market="CRYPTO",
                     adapter=btc_adapter,
                     board=board,
                     role=Role.CHOSEN if target == "CRYPTO" else Role.RELATED,
+                    brain=brain,
                 ),
             }
 
             session_id = f"sim_{target}_{d_str}"
 
-            # 3. Deliberation according to mode
-            if mode == Mode.SINGLE:
-                _, consensus, _, _ = run_single_mode(
-                    agents=agents,
-                    board=board,
-                    session_id=session_id,
-                    target_market=target,
-                    asset=symbol,
-                )
-            elif mode == Mode.SILENT:
-                _, consensus, _, _ = run_silent_mode(
-                    agents=agents,
-                    board=board,
-                    session_id=session_id,
-                    asset=symbol,
-                    min_margin=min_margin,
-                )
-            else:  # Mode.DEBATE
-                _, consensus, _, _ = run_debate_mode(
-                    agents=agents,
-                    board=board,
-                    session_id=session_id,
-                    asset=symbol,
-                    max_turns=3,
-                    min_margin=min_margin,
-                )
+            # 3. Deliberation according to mode (single dispatcher, Part 0.2)
+            _, consensus, summaries, _ = run_mode(
+                mode=mode,
+                agents=agents,
+                board=board,
+                session_id=session_id,
+                asset=symbol,
+                max_turns=3,
+                min_margin=min_margin,
+                target_market=target,
+                accuracy_tracker=accuracy_tracker,
+            )
 
             # 4. Target candles closed <= cutoff for Risk Governance
             target_adapter = us_adapter if target == "US" else btc_adapter
@@ -506,6 +526,16 @@ class BarByBarSimulator:
                 )
             )
 
+            # Capture this day's final stances (only agents that actually
+            # produced a recommendation) for the next iteration's outcome.
+            ran_markets = {m.from_market for m in board.get_messages(session_id, round_num=0)}
+            prev_finals = {
+                m: (agents[m].state.current_position, agents[m].state.data_status)
+                for m in ran_markets
+                if m in agents
+            }
+            prev_target_close = curr_target_close
+
         # 9. Close any remaining open position at final price
         if current_pos != 0:
             final_raw = float(closed_candles[-1].close)
@@ -584,4 +614,5 @@ class BarByBarSimulator:
             benchmark_buy_hold_exit_date=bh.exit_date,
             max_entry_leverage_ratio=round(max_entry_leverage_ratio, 6),
             max_gross_exposure_ratio=round(max_gross_exposure_ratio, 6),
+            final_accuracy=accuracy_tracker.snapshot(),
         )

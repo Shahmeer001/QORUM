@@ -21,7 +21,16 @@ def run_silent_mode(
     session_id: str,
     asset: str,
     min_margin: float = 0.0,
+    weighted: bool = True,
+    accuracy_tracker: AccuracyTracker | None = None,
 ) -> Tuple[int, Action, List[AgentSummary], List[SupervisorEventLog]]:
+    """
+    Silent consensus mode (Part 0.2).
+    - weighted=True  -> silent-weighted: vote = role x learned accuracy (scaled
+      by confidence). Same weights debate uses, minus the dialogue.
+    - weighted=False -> silent-unweighted: equal votes (base weight 1.0, no
+      role, no accuracy), scaled by confidence.
+    """
     events: List[SupervisorEventLog] = []
     summaries: List[AgentSummary] = []
 
@@ -39,15 +48,20 @@ def run_silent_mode(
             )
         )
 
+    if accuracy_tracker is None:
+        accuracy_tracker = AccuracyTracker()
+
     events.append(
         SupervisorEventLog(
             round=0,
-            text=f"Silent mode: Collected {len(summaries)} independent recommendations without debate.",
+            text=(
+                f"Silent {'weighted' if weighted else 'unweighted'} mode: "
+                f"collected {len(summaries)} independent recommendations without debate."
+            ),
         )
     )
 
-    accuracy_tracker = AccuracyTracker()
     consensus, _, _ = calculate_consensus(
-        summaries, accuracy_tracker, min_margin=min_margin
+        summaries, accuracy_tracker, min_margin=min_margin, unweighted=not weighted
     )
     return 0, consensus, summaries, events

@@ -14,11 +14,21 @@ def calculate_consensus(
     agents: List[AgentSummary],
     accuracy_tracker: AccuracyTracker,
     min_margin: float = 0.0,
+    unweighted: bool = False,
 ) -> Tuple[Action, float, Dict[str, float]]:
     """
     Computes winning Action and consensus confidence percentage.
+
+    Weighting (Part 0.2):
+    - unweighted=False (silent-weighted / debate): vote weight = role x learned
+      accuracy (via accuracy_tracker.get_weight), then scaled by confidence.
+    - unweighted=True (silent-unweighted): equal votes -- every agent gets a
+      base weight of 1.0 (no role, no accuracy), still scaled by its own
+      confidence. This isolates the effect of role x accuracy weighting.
+
     If min_margin > 0.0 and the top directional score does not beat the runner-up
     by at least min_margin percentage points, consensus defaults to HOLD.
+    A directional BUY/SELL tie also resolves to HOLD.
     """
     scores: Dict[Action, float] = {
         Action.BUY: 0.0,
@@ -29,7 +39,10 @@ def calculate_consensus(
 
     total_weight = 0.0
     for a in agents:
-        w = accuracy_tracker.get_weight(a.market, a.role)
+        if unweighted:
+            w = 1.0
+        else:
+            w = accuracy_tracker.get_weight(a.market, a.role)
         scores[a.final] += w * (a.confidence / 100.0)
         total_weight += w
 

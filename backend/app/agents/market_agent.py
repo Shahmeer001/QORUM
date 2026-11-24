@@ -86,6 +86,7 @@ class MarketAgent:
         self.state.confidence = conf
         self.state.last_reason = reason
         self.state.evidence = ev
+        self.state.data_status = data_status
 
         msg = Message(
             id=f"msg_{uuid.uuid4().hex[:8]}",

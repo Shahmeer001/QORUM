@@ -45,7 +45,7 @@ SAME_TOLERANCE = 0.00025       # +-0.025% tolerance for 'S' candle
 PATTERN_LENGTH = 3             # 3 candles (27 possible patterns: U-S-D combinations)
 
 # Modes
-VALID_MODES = ["single", "silent", "debate"]
+VALID_MODES = ["single", "silent", "silent_unweighted", "silent_weighted", "debate"]
 
 # US Equity Close: Defined by timezone America/New_York at 4:00 PM (16:00),
 # NOT a fixed UTC hour, so daylight saving time shifts are accurately handled.

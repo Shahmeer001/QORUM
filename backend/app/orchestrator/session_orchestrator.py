@@ -25,13 +25,14 @@ from app.domain.models import (
     SessionResult,
     Trade,
 )
-from app.modes.debate import run_debate_mode
+from app.modes.dispatch import run_mode
 from app.modes.runner import build_agents, load_markets_config
-from app.modes.silent import run_silent_mode
-from app.modes.single import run_single_mode
 from app.risk.risk_layer import RiskLayer
 from app.simulator.metrics import compute_metrics
 from app.simulator.trade_engine import simulate_trades
+from app.supervisor import live_accuracy
+from app.supervisor.accuracy import AccuracyTracker
+from app.supervisor.accuracy_bookkeeper import apply_outcome
 
 
 class SessionOrchestrator:
@@ -268,34 +269,41 @@ class SessionOrchestrator:
                     evidence=["Health Check Passed"],
                 )
 
-        # 3. Execute chosen multi-agent mode
+        # 3. Execute chosen multi-agent mode.
         effective_mode = Mode.SINGLE if is_degraded_single else config.mode
 
-        if effective_mode == Mode.SINGLE:
-            turns_used, consensus, summaries, events = run_single_mode(
-                agents=agents,
-                board=self.board,
-                session_id=session_id,
-                target_market=active_target,
-                asset=config.asset,
-            )
-        elif effective_mode == Mode.SILENT:
-            turns_used, consensus, summaries, events = run_silent_mode(
-                agents=agents,
-                board=self.board,
-                session_id=session_id,
-                asset=config.asset,
-                min_margin=config.min_margin,
-            )
-        else:  # Mode.DEBATE
-            turns_used, consensus, summaries, events = run_debate_mode(
-                agents=agents,
-                board=self.board,
-                session_id=session_id,
-                asset=config.asset,
-                max_turns=config.max_turns,
-                min_margin=config.min_margin,
-            )
+        # Live accuracy tracker (Part 0.1). Only the live path with a DB handle
+        # and a real-data target carries state across sessions; the replay
+        # simulator manages its own per-target tracker. Tests run with db=None
+        # so they always see a fresh neutral-prior tracker.
+        accuracy_tracker = self._prepare_live_tracker(config, active_target, agents)
+
+        turns_used, consensus, summaries, events = run_mode(
+            mode=effective_mode,
+            agents=agents,
+            board=self.board,
+            session_id=session_id,
+            asset=config.asset,
+            max_turns=config.max_turns,
+            min_margin=config.min_margin,
+            target_market=active_target,
+            accuracy_tracker=accuracy_tracker,
+        )
+
+        # Record this session's final stances + the target close so the NEXT
+        # live session for this target can score this session's calls (no
+        # look-ahead: the outcome is applied at the next cutoff).
+        if self.db is not None and active_target in ("US", "CRYPTO"):
+            ran_markets = {
+                m.from_market for m in self.board.get_messages(session_id, round_num=0)
+            }
+            finals = {
+                m: (agents[m].state.current_position, agents[m].state.data_status)
+                for m in ran_markets
+                if m in agents
+            }
+            curr_close = self._target_close(agents, active_target, config.asset)
+            live_accuracy.set_last(active_target, config.day, curr_close or 0.0, finals)
 
         # 4. Target candles for risk governance & simulation
         target_adapter = agents[active_target].adapter
@@ -371,6 +379,35 @@ class SessionOrchestrator:
     def run_unmonitored(self, config: SessionConfig) -> SessionResult:
         """Executes session without Orchestrator monitoring (raw multi-agent execution)."""
         return self.run_session(config=config, monitor=False)
+
+    def _target_close(self, agents: Dict[str, any], target: str, asset: str) -> Optional[float]:
+        """Latest closed candle close for the target at the session's decision date."""
+        try:
+            candles = agents[target].adapter.get_candles(symbol=asset, limit=1)
+            return float(candles[-1].close) if candles else None
+        except Exception:
+            return None
+
+    def _prepare_live_tracker(
+        self, config: SessionConfig, active_target: str, agents: Dict[str, any]
+    ) -> AccuracyTracker:
+        """
+        Loads the live accuracy tracker for the traded target and, if a previous
+        live session for that target is recorded, applies its outcome (no
+        look-ahead) before this session's decision. Returns a fresh tracker for
+        the replay/test path (db=None) or non-real targets.
+        """
+        if self.db is None or active_target not in ("US", "CRYPTO"):
+            return AccuracyTracker()
+
+        tracker = live_accuracy.get_tracker(active_target)
+        last = live_accuracy.get_last(active_target)
+        if last and last.get("close"):
+            curr_close = self._target_close(agents, active_target, config.asset)
+            if curr_close:
+                realised = (curr_close - last["close"]) / last["close"]
+                apply_outcome(tracker, last["finals"], realised)
+        return tracker
 
     def _persist_session(self, res: SessionResult) -> None:
         if self.db is None:

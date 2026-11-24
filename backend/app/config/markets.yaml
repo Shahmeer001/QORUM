@@ -17,6 +17,7 @@ markets:
     open: false
     assets:
       - SPY
+    accuracy_prior: 0.5  # neutral prior; weights are earned from realised outcomes
     why: Global risk-on/off driver; real yields move gold and crypto.
 
   CRYPTO:
@@ -35,6 +36,7 @@ markets:
     assets:
       - BTCUSDT
       - BTC-USD
+    accuracy_prior: 0.5  # neutral prior; weights are earned from realised outcomes
     why: High-beta risk gauge; digital liquidity bellwether.
 
   PSX:
@@ -53,6 +55,7 @@ markets:
       - HBL
       - LUCK
       - ENGRO
+    accuracy_prior: 0.5  # neutral prior; weights are earned from realised outcomes
     why: Regional emerging market proxy (FYP2).
 
   FOREX:
@@ -69,6 +72,7 @@ markets:
     assets:
       - EURUSD
       - DXY
+    accuracy_prior: 0.5  # neutral prior; weights are earned from realised outcomes
     why: Dollar strength benchmark (FYP2).
 
   GOLD:
@@ -84,4 +88,5 @@ markets:
     open: false
     assets:
       - XAUUSD
+    accuracy_prior: 0.5  # neutral prior; weights are earned from realised outcomes
     why: Classic safe-haven hedge against macro shocks (FYP2).
