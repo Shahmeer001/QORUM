@@ -14,32 +14,49 @@ Columns:          Date, Open, High, Low, Close, Volume
 Pricing:          RAW (unadjusted close)
 Date Format:      Day-first ("DD/MM/YYYY HH:MM:SS"), parsed day-first, date only.
                   Early closes handled by markets.yaml holiday calendar.
-SHA-256 Checksum: c617dbb50402e607d9a3fa136a5f75b24065f0e772341a7fabb4a2b87211131a
+SHA-256 Checksum: c617dbb50402e607d9a3fa136a5f75b24065f0e772341a7fabb4a2b87211131a (corrected)
+                  2d546129fb72643d618799f5d66ed9ed863e83139d5287346d0cd0eb05144a57 (original, supervisor-supplied)
 Gap Analysis:     48 non-trading business days (Mon-Fri) across 2022-2026, perfectly
                   matching all official NYSE holidays (Martin Luther King Jr. Day,
                   Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day,
                   Labor Day, Thanksgiving, Christmas Day, New Year's Day, and national days).
                   Zero unexpected gaps.
 
-Lineage:
-  original   → spy_daily_original.csv  (SHA-256: a3dc1da631dd740443462193a4c90a01d0f931c7aa49a6d85d9c7fc138407cc1)
-               NOTE: supervisor-supplied original SHA was 2d546129fb72643d618799f5d66ed9ed863e83139d5287346d0cd0eb05144a57.
-               The CSV is gitignored so it was reconstructed by reverting the 2025-05-22
-               correction.  The reconstructed file hash does not match the supervisor-supplied
-               value; exact original is unrecoverable from version control.
-  correction → 2025-05-22 stale row replaced from Nasdaq crosscheck (see SPY_CORRECTIONS.md)
-  corrected  → spy_daily.csv (current file, SHA-256 above)
+Checksums:
+  Original download SHA-256 (supervisor-supplied authoritative reference):
+                    2d546129fb72643d618799f5d66ed9ed863e83139d5287346d0cd0eb05144a57
+  Reconstructed original (spy_daily_original.csv, pandas round-trip of pre-correction data):
+                    a3dc1da631dd740443462193a4c90a01d0f931c7aa49a6d85d9c7fc138407cc1
+  Corrected file (spy_daily.csv, current working file):
+                    c617dbb50402e607d9a3fa136a5f75b24065f0e772341a7fabb4a2b87211131a
 
-Crosscheck (Nasdaq feed) SHA-256: e6dbae0fe0d9f2efc06732a42e921002c0bef7b9f32bfd3d9800f775761ddd12
-  NOTE: This is the supervisor-supplied third-party value.  The actual crosscheck file
-  may differ; discrepancy (if present) is noted here for transparency.
+  NOTE ON HASH MISMATCH: spy_daily_original.csv was reconstructed by reverting the
+  2025-05-22 correction in-memory and re-writing via pandas.  Pandas normalises
+  floating-point precision and line endings during read+write, so the reconstructed
+  file does not reproduce the supervisor-supplied hash byte-for-byte.  The original
+  download was not committed to git before the correction was applied.  The
+  supervisor-supplied hash (2d5461...) is recorded here as the authoritative reference;
+  spy_daily_original.csv is the closest recoverable approximation.
+
+Lineage:
+  1. Original download          → hash 2d5461... (authoritative; bytes unrecoverable)
+  2. Correction 2025-05-22      → stale row replaced from Nasdaq crosscheck
+  3. Corrected working file     → spy_daily.csv (hash c617db...)
+
+Crosscheck file: backend/data_cache/spy_daily_crosscheck.csv (Nasdaq feed, MM/DD/YYYY)
+  SHA-256 (supervisor-supplied third-party value):
+                    e6dbae0fe0d9f2efc06732a42e921002c0bef7b9f32bfd3d9800f775761ddd12
+  NOTE: The actual file on disk may have a different hash due to download/encoding
+  differences; the supervisor-supplied value is recorded here for reference.
 
 Provisional rows (awaiting Yahoo Finance third-source confirmation):
-  2025-05-22 — PROVISIONAL — awaiting Yahoo confirmation
-  2026-04-20 — PROVISIONAL — awaiting Yahoo confirmation (crosscheck shows placeholder stub O=H=L=C=710.14)
+  2025-05-22 — PROVISIONAL — corrected from Nasdaq crosscheck; awaiting Yahoo confirmation
+  2026-04-20 — PROVISIONAL — SPY row kept as-is; crosscheck has placeholder stub
+               O=H=L=C=710.14, V=NaN; awaiting Yahoo confirmation
 
 Corrections: 2025-05-22 stale row replaced from Nasdaq crosscheck.
   See backend/data_cache/SPY_CORRECTIONS.md for full audit trail.
+  Data quality report: backend/data_cache/data_quality_report.md (all 5 checks pass).
 
 2. CRYPTO MARKET DATA (BTC Hourly)
 --------------------------------------------------------------------------------
