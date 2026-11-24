@@ -1,5 +1,5 @@
 """
-Tests for Part 0.5: persisting experiment runs to the database.
+Tests for Part 0.5 / Item 5: persisting experiment runs to the database.
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.tables import Base
 from app.domain.enums import Action, Mode, RiskStatus
+from app.domain.models import EquityPoint, Trade
 from app.simulator.replay_simulator import DailyDecisionRecord, SimulationResult
 from app.services.run_persistence import persist_run
 
@@ -31,7 +32,7 @@ def test_persist_run_stores_daily_decisions():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Build a minimal SimulationResult.
+    # Build a minimal SimulationResult with trades and equity curve.
     result = SimulationResult(
         target_market="US",
         mode=Mode.DEBATE,
@@ -49,8 +50,20 @@ def test_persist_run_stores_daily_decisions():
         turnover=1.5,
         evaluation_days_count=3,
         degraded_days_count=0,
-        trades=[],
-        equity_curve=[],
+        trades=[
+            Trade(
+                entry="2025-01-06 09:30:00-05:00",
+                exit="2025-01-07 09:30:00-05:00",
+                side=Action.BUY,
+                market="US",
+                pnl=120.0,
+                note="Long entry",
+            ),
+        ],
+        equity_curve=[
+            EquityPoint(t="2025-01-06", v=10000.0),
+            EquityPoint(t="2025-01-07", v=10120.0),
+        ],
         daily_decisions=[
             DailyDecisionRecord(
                 date="2025-01-06",
@@ -90,10 +103,24 @@ def test_persist_run_stores_daily_decisions():
     assert run_id.startswith("run-")
     assert "US" in run_id and "debate" in run_id.lower()
 
-    # Verify rows inserted.
     from sqlalchemy import text
-    rows = session.execute(text("SELECT COUNT(*) FROM daily_decisions WHERE run_id = :rid"), {"rid": run_id}).scalar()
-    assert rows == 2
+    # Verify daily_decisions rows inserted.
+    dd_rows = session.execute(
+        text("SELECT COUNT(*) FROM daily_decisions WHERE run_id = :rid"), {"rid": run_id}
+    ).scalar()
+    assert dd_rows == 2
+
+    # Verify trades rows inserted (Item 5).
+    trade_rows = session.execute(
+        text("SELECT COUNT(*) FROM trades WHERE session_id = :sid"), {"sid": run_id}
+    ).scalar()
+    assert trade_rows == 1, f"Expected 1 trade row, got {trade_rows}"
+
+    # Verify equity_points rows inserted (Item 5).
+    eq_rows = session.execute(
+        text("SELECT COUNT(*) FROM equity_points WHERE session_id = :sid"), {"sid": run_id}
+    ).scalar()
+    assert eq_rows == 2, f"Expected 2 equity_point rows, got {eq_rows}"
 
     # Cleanup.
     session.close()

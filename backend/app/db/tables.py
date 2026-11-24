@@ -87,3 +87,24 @@ class DailyDecisionTable(Base):
     fill_price = Column(Float, nullable=True)
     position_held = Column(Integer, default=0)
     created_at = Column(DateTime, default=utc_now)
+
+
+class TradeTable(Base):
+    __tablename__ = "trades"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, ForeignKey("sessions.id"), nullable=False)
+    entry_time = Column(String, nullable=False)
+    exit_time = Column(String, nullable=False)
+    side = Column(String, nullable=False)
+    market = Column(String, nullable=False)
+    pnl = Column(Float, nullable=False)
+    note = Column(Text, nullable=True)
+
+
+class EquityPointTable(Base):
+    __tablename__ = "equity_points"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, ForeignKey("sessions.id"), nullable=False)
+    point_order = Column(Integer, nullable=False)
+    label = Column(String, nullable=False)
+    equity = Column(Float, nullable=False)

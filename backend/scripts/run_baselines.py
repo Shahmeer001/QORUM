@@ -236,6 +236,16 @@ def run_random_trader(sim: BarByBarSimulator, target_market: str, n_seeds: int =
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="QUORUM Baselines Evaluation")
+    parser.add_argument(
+        "--persist-db",
+        metavar="PATH",
+        default=None,
+        help="Optional SQLite DB path; persists each baseline result via persist_run.",
+    )
+    args = parser.parse_args()
+
     print("=" * 90)
     print("QUORUM BASELINES EVALUATION (SAME ENGINE, FILLS, FRICTION, AND DAYS)")
     print("=" * 90)
@@ -251,6 +261,33 @@ def main():
         print(f"Always-Flat: Return = {flat['return_pct']:>6.2f}%, Max DD = {flat['max_dd_pct']:>6.2f}%, Sharpe = {flat['sharpe']:>5.2f}, Trades = {flat['trade_count']}")
         print(f"Random (200 seeds): Mean Return = {rand['mean_return_pct']:>6.2f}% (+/- {rand['std_return_pct']:.2f}%), Spread = [{rand['min_return_pct']:.2f}%, {rand['max_return_pct']:.2f}%]")
         print(f"                   Mean Max DD = {rand['mean_max_dd_pct']:>6.2f}% (+/- {rand['std_max_dd_pct']:.2f}%), Mean Sharpe = {rand['mean_sharpe']:.2f}")
+
+    if args.persist_db:
+        # Persist via run_simulation for each target so persist_run receives a
+        # proper SimulationResult.  This is intentionally not run by default;
+        # pass --persist-db PATH to trigger it.
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from app.agents.brains.fake_brain import FakeBrain
+        from app.domain.enums import Action, Mode
+        from app.services.run_persistence import persist_run
+
+        engine = create_engine(f"sqlite:///{args.persist_db}")
+        DBSession = sessionmaker(bind=engine)
+        db = DBSession()
+        try:
+            for target in ["US", "CRYPTO"]:
+                result = sim.run_simulation(
+                    target_market=target,
+                    mode=Mode.DEBATE,
+                    allow_short=False,
+                    brain=FakeBrain(Action.BUY),
+                )
+                run_id = persist_run(db, result, run_name=f"baseline-buybrain-{target.lower()}", notes="run_baselines.py --persist-db")
+                print(f"Persisted {target} run as {run_id}")
+        finally:
+            db.close()
+            engine.dispose()
 
 
 if __name__ == "__main__":
