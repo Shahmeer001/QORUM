@@ -11,7 +11,7 @@ def test_risk_overrides_high_volatility():
         for i in range(20)
     ]
 
-    action, status, note, events = risk.evaluate(Action.BUY, volatile_candles)
+    action, status, note, events = risk.evaluate(Action.BUY, volatile_candles)[:4]
     assert action == Action.HOLD
     assert status == RiskStatus.OVERRIDDEN
     assert "volatility" in note.lower()

@@ -37,6 +37,9 @@ DEFAULT_STOP_LOSS = 1.2        # %
 DEFAULT_MAX_VOLATILITY = 2.5   # %
 DEFAULT_MAX_DRAWDOWN = 5.0     # %
 
+# Risk Cool-off (Item 1): days the drawdown breaker blocks new entries after a breach.
+DRAWDOWN_COOLOFF_DAYS = 10
+
 # Signal & Pattern Analysis (must match research/04_pattern_stats.py)
 RSI_PERIOD = 14
 RSI_BUY_ZONE = (20.0, 30.0)

@@ -19,6 +19,6 @@ def test_supervisor_consensus_and_risk_veto():
     # Feed high volatility candles
     risk = RiskLayer(max_volatility=1.5)
     candles = SyntheticAdapter(scenario="bear").get_candles(limit=20)
-    final_action, status, _, _ = risk.evaluate(consensus, candles)
+    final_action, status, _, _, _veto = risk.evaluate(consensus, candles)
     assert status == RiskStatus.OVERRIDDEN
     assert final_action == Action.HOLD

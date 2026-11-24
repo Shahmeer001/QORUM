@@ -20,7 +20,7 @@ def test_drawdown_above_max_forces_hold():
         consensus=Action.BUY,
         candles=calm_candles,
         running_drawdown_pct=6.0,  # exceeds 5% limit
-    )
+    )[:4]
     assert action == Action.HOLD
     assert status == RiskStatus.OVERRIDDEN
     assert "Drawdown" in note and "forced HOLD" in note
@@ -40,7 +40,7 @@ def test_drawdown_within_limit_allows_buy():
         consensus=Action.BUY,
         candles=calm_candles,
         running_drawdown_pct=3.0,  # within limit
-    )
+    )[:4]
     assert action == Action.BUY
     assert status == RiskStatus.APPROVED
 
@@ -59,7 +59,7 @@ def test_drawdown_veto_takes_precedence_over_volatility():
         consensus=Action.BUY,
         candles=volatile_candles,
         running_drawdown_pct=6.0,  # drawdown breach
-    )
+    )[:4]
     # Drawdown check runs first; result is HOLD from drawdown, not vol.
     assert action == Action.HOLD
     assert "Drawdown" in note

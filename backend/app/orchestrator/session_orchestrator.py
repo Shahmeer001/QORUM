@@ -319,7 +319,7 @@ class SessionOrchestrator:
             max_volatility=config.max_vol,
             max_drawdown=config.max_dd,
         )
-        final_action, risk_status, risk_note, risk_events = risk_layer.evaluate(
+        final_action, risk_status, risk_note, risk_events, _veto_src = risk_layer.evaluate(
             consensus=consensus,
             candles=candles,
             running_drawdown_pct=0.0,  # live multi-session drawdown requires DB-persisted equity

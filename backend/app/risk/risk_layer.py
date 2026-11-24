@@ -2,10 +2,22 @@
 QUORUM Risk Layer.
 Holds absolute veto authority over the supervisor's recommended consensus.
 Applies volatility filters, drawdown stops, and capital protection rules.
+
+Risk veto semantics (Item 1):
+- Consensus HOLD (RiskStatus.APPROVED): keeps the current position, no trade.
+- Risk-veto HOLD from drawdown breach (RiskStatus.OVERRIDDEN, veto_source="drawdown"):
+  flatten the position and block new entries.  The replay simulator detects this
+  and closes any open position at the fill price of the next bar.
+- Volatility override (RiskStatus.OVERRIDDEN, veto_source="volatility"):
+  the consensus BUY/SELL is overridden to HOLD; no position change is forced.
+- Cool-off: after a drawdown breach the breaker stays armed for
+  `drawdown_cooloff_days` (default=DRAWDOWN_COOLOFF_DAYS) additional days.
+  The replay simulator tracks the counter; RiskLayer itself is stateless.
 """
 from __future__ import annotations
 
 from typing import List, Tuple
+from app.config.settings import DRAWDOWN_COOLOFF_DAYS
 from app.domain.enums import Action, RiskStatus
 from app.domain.models import Candle, RiskEvent
 from app.signals.volatility import calculate_realized_volatility
@@ -17,19 +29,29 @@ class RiskLayer:
         stop_loss: float = 1.2,
         max_volatility: float = 2.5,
         max_drawdown: float = 5.0,
+        drawdown_cooloff_days: int = DRAWDOWN_COOLOFF_DAYS,
     ) -> None:
         self.stop_loss = stop_loss
         self.max_volatility = max_volatility
         self.max_drawdown = max_drawdown
+        self.drawdown_cooloff_days = drawdown_cooloff_days
 
     def evaluate(
         self,
         consensus: Action,
         candles: List[Candle],
         running_drawdown_pct: float = 0.0,
-    ) -> Tuple[Action, RiskStatus, str, List[RiskEvent]]:
+    ) -> Tuple[Action, RiskStatus, str, List[RiskEvent], str]:
         """
         Risk governance with hard veto authority.
+
+        Returns a 5-tuple:
+            (final_action, risk_status, note, events, veto_source)
+
+        `veto_source` is one of:
+            ""           – no veto; risk approved the consensus.
+            "drawdown"   – drawdown breaker fired; flatten and block new entries.
+            "volatility" – volatility threshold exceeded; consensus overridden to HOLD.
 
         `running_drawdown_pct` is the CURRENT drawdown of the simulated equity
         curve (peak-to-current as a % of peak) at the time of the decision.
@@ -58,7 +80,7 @@ class RiskLayer:
                     level="override",
                 )
             )
-            return Action.HOLD, RiskStatus.OVERRIDDEN, note, events
+            return Action.HOLD, RiskStatus.OVERRIDDEN, note, events, "drawdown"
 
         # Volatility check: if volatility exceeds threshold, override BUY/SELL to HOLD
         if current_vol > self.max_volatility and consensus in (Action.BUY, Action.SELL):
@@ -73,7 +95,7 @@ class RiskLayer:
                     level="override",
                 )
             )
-            return Action.HOLD, RiskStatus.OVERRIDDEN, note, events
+            return Action.HOLD, RiskStatus.OVERRIDDEN, note, events, "volatility"
 
         # If passed without override
         events.append(
@@ -88,4 +110,5 @@ class RiskLayer:
             RiskStatus.APPROVED,
             f"Risk control approved {consensus.value} with volatility at {current_vol:.1f}%.",
             events,
+            "",
         )

@@ -313,6 +313,8 @@ class BarByBarSimulator:
 
         # Running drawdown for risk veto (Part 0.3): peak equity seen so far.
         equity_peak = self.initial_capital
+        # Cool-off counter (Item 1): counts down after a drawdown breach.
+        cooloff_remaining: int = 0
 
         for i, eval_date in enumerate(all_eval_days):
             d_str = eval_date.isoformat()
@@ -385,11 +387,25 @@ class BarByBarSimulator:
             if equity_peak > 0:
                 running_dd = ((equity_peak - current_equity) / equity_peak) * 100.0
 
-            final_action, risk_status, risk_note, _ = risk_layer.evaluate(
+            final_action, risk_status, risk_note, _, veto_source = risk_layer.evaluate(
                 consensus=consensus,
                 candles=closed_candles,
                 running_drawdown_pct=running_dd,
             )
+
+            # Cool-off logic (Item 1): after a drawdown breach, block new entries
+            # for drawdown_cooloff_days more days.
+            if veto_source == "drawdown":
+                # Drawdown breach fires: set/reset the cool-off counter.
+                cooloff_remaining = risk_layer.drawdown_cooloff_days
+            elif cooloff_remaining > 0:
+                # Still within cool-off window: override final_action to HOLD
+                # so no new position is opened (the existing position was already
+                # closed on the breach day).
+                final_action = Action.HOLD
+                risk_status = RiskStatus.OVERRIDDEN
+                risk_note = f"Drawdown cool-off active ({cooloff_remaining} days remaining); new entries blocked."
+                cooloff_remaining -= 1
 
             # 5. Determine target position stance
             if final_action == Action.BUY:
