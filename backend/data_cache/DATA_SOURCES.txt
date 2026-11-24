@@ -20,8 +20,26 @@ Gap Analysis:     48 non-trading business days (Mon-Fri) across 2022-2026, perfe
                   Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day,
                   Labor Day, Thanksgiving, Christmas Day, New Year's Day, and national days).
                   Zero unexpected gaps.
-                  Corrections: 2025-05-22 stale row replaced from Nasdaq crosscheck.
-                  See backend/data_cache/SPY_CORRECTIONS.md for full audit trail.
+
+Lineage:
+  original   → spy_daily_original.csv  (SHA-256: a3dc1da631dd740443462193a4c90a01d0f931c7aa49a6d85d9c7fc138407cc1)
+               NOTE: supervisor-supplied original SHA was 2d546129fb72643d618799f5d66ed9ed863e83139d5287346d0cd0eb05144a57.
+               The CSV is gitignored so it was reconstructed by reverting the 2025-05-22
+               correction.  The reconstructed file hash does not match the supervisor-supplied
+               value; exact original is unrecoverable from version control.
+  correction → 2025-05-22 stale row replaced from Nasdaq crosscheck (see SPY_CORRECTIONS.md)
+  corrected  → spy_daily.csv (current file, SHA-256 above)
+
+Crosscheck (Nasdaq feed) SHA-256: e6dbae0fe0d9f2efc06732a42e921002c0bef7b9f32bfd3d9800f775761ddd12
+  NOTE: This is the supervisor-supplied third-party value.  The actual crosscheck file
+  may differ; discrepancy (if present) is noted here for transparency.
+
+Provisional rows (awaiting Yahoo Finance third-source confirmation):
+  2025-05-22 — PROVISIONAL — awaiting Yahoo confirmation
+  2026-04-20 — PROVISIONAL — awaiting Yahoo confirmation (crosscheck shows placeholder stub O=H=L=C=710.14)
+
+Corrections: 2025-05-22 stale row replaced from Nasdaq crosscheck.
+  See backend/data_cache/SPY_CORRECTIONS.md for full audit trail.
 
 2. CRYPTO MARKET DATA (BTC Hourly)
 --------------------------------------------------------------------------------
