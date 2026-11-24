@@ -311,6 +311,9 @@ class BarByBarSimulator:
         prev_target_close: Optional[float] = None
         prev_finals: Dict[str, Tuple[Action, DataStatus]] = {}
 
+        # Running drawdown for risk veto (Part 0.3): peak equity seen so far.
+        equity_peak = self.initial_capital
+
         for i, eval_date in enumerate(all_eval_days):
             d_str = eval_date.isoformat()
 
@@ -364,9 +367,28 @@ class BarByBarSimulator:
             target_adapter = us_adapter if target == "US" else btc_adapter
             closed_candles = target_adapter.get_candles(symbol=symbol, limit=100)
 
+            # Compute running drawdown from the equity curve built so far (Part 0.3).
+            # Before any trades, the 'current' equity is cash, and peak is initial capital.
+            current_equity = cash
+            if units > 0 and current_pos != 0:
+                # Mark-to-market using today's close (already computed above for the fill logic).
+                # For US, current_close_price is set after the fill block; for CRYPTO, same.
+                # At this point in the loop, current_close_price is not yet set for today.
+                # Use the last close from closed_candles for the mark.
+                mark = float(closed_candles[-1].close) if closed_candles else 0.0
+                if current_pos == 1:
+                    current_equity = cash + units * mark
+                elif current_pos == -1:
+                    current_equity = cash - units * mark
+            equity_peak = max(equity_peak, current_equity)
+            running_dd = 0.0
+            if equity_peak > 0:
+                running_dd = ((equity_peak - current_equity) / equity_peak) * 100.0
+
             final_action, risk_status, risk_note, _ = risk_layer.evaluate(
                 consensus=consensus,
                 candles=closed_candles,
+                running_drawdown_pct=running_dd,
             )
 
             # 5. Determine target position stance

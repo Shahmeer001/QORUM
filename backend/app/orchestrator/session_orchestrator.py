@@ -310,6 +310,10 @@ class SessionOrchestrator:
         candles = target_adapter.get_candles(symbol=config.asset, limit=100)
 
         # 5. Risk Layer Evaluation (hard veto authority)
+        # For a live session, the running drawdown would need to be computed from
+        # DB-persisted equity for this target. The orchestrator does not currently
+        # carry equity across sessions, so we pass 0.0 (no drawdown yet). The replay
+        # simulator computes and passes the real running drawdown from its equity curve.
         risk_layer = RiskLayer(
             stop_loss=config.stop_loss,
             max_volatility=config.max_vol,
@@ -318,6 +322,7 @@ class SessionOrchestrator:
         final_action, risk_status, risk_note, risk_events = risk_layer.evaluate(
             consensus=consensus,
             candles=candles,
+            running_drawdown_pct=0.0,  # live multi-session drawdown requires DB-persisted equity
         )
 
         if is_degraded_single:
