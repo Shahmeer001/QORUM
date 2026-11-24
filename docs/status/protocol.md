@@ -130,3 +130,55 @@ Fill rules:
 - SHA-256: `9ee5cce53336453b325509bfe5ca3a7bfbc1ab545a000812aac059f0be426e40`
 - One missing hour: 2023-03-24 13:00 UTC (Binance matching engine outage, real event).
   No correction applied; gap is documented and within the learning window.
+
+---
+
+## 9. Session IDs
+
+Format: `QRM-{year}-{uuid4().hex}` — 32 hex chars from `uuid.uuid4().hex`, prefixed with
+`QRM-{year}-`.  Example: `QRM-2026-3f4e8a1b2c5d6e7f8a9b0c1d2e3f4a5b`.
+
+**What the `_build_summaries(session_id)` bug was:**  
+The old format used only 3 uppercase hex chars (`uuid.uuid4().hex[:8].upper()` → 8 chars,
+but the concern is that only 4096 total combinations existed with 3 lowercase hex chars in
+an earlier incarnation). Two concurrent sessions in the same process could collide;
+if two sessions shared an ID, `_build_summaries` would have called
+`self.board.get_all("")` (the wrong key) and read messages from the wrong session,
+producing incorrect initial positions or silently skipping messages.
+
+**Why no silent cross-contamination in practice:**  
+The `MemoryBoardRepository` stores messages keyed by `session_id`. With the old short
+suffix, a collision would have caused a duplicate-key error on SQLite insert (the
+`sessions` table uses `session_id` as a primary key), not silent data mixing. The fix
+uses `uuid.uuid4().hex` (32 chars), making collisions astronomically unlikely, and passes
+`session_id` explicitly to all board calls.
+
+---
+
+## 10. Risk Veto Semantics
+
+Three distinct behaviours after the `RiskLayer.evaluate` call:
+
+| Scenario | `RiskStatus` | `veto_source` | Simulator behaviour |
+|---|---|---|---|
+| Consensus HOLD | `APPROVED` | `""` | Keep current position; no trade. |
+| Drawdown breach | `OVERRIDDEN` | `"drawdown"` | Flatten position (force close); block new entries for `DRAWDOWN_COOLOFF_DAYS` more days. |
+| Volatility breach | `OVERRIDDEN` | `"volatility"` | Override BUY/SELL to HOLD; no position change forced. |
+
+**Cool-off re-arm rule:**  
+On a drawdown breach day the replay simulator sets `cooloff_remaining = drawdown_cooloff_days`
+(default: `DRAWDOWN_COOLOFF_DAYS = 10`, in `settings.py`).  On each subsequent day while
+`cooloff_remaining > 0`, the final action is overridden to HOLD and the counter is
+decremented.  When it reaches 0 the breaker re-arms and normal signals resume.
+
+The parameter `DRAWDOWN_COOLOFF_DAYS = 10` was chosen as the initial value and may be
+tuned on the validation split (2024).
+
+---
+
+## 11. HOLD scoring
+
+HOLD calls are **excluded** from accuracy updates. Rationale: HOLD carries no directional
+conviction, so scoring it as correct (realised_return==0 is rare) or incorrect would add
+noise. Only BUY and SELL calls update the tracker. ABSTAIN and non-VALID calls are also
+excluded (see Part 0.1).
