@@ -153,7 +153,7 @@ class SessionOrchestrator:
         Executes a session. If monitor=True, the Orchestrator actively enforces
         quorum gates, agent health checks, and debate quorum (requiring both active agents).
         """
-        session_id = f"QRM-{datetime.now(timezone.utc).strftime('%Y')}-{uuid.uuid4().hex[:3].upper()}"
+        session_id = f"QRM-{datetime.now(timezone.utc).strftime('%Y')}-{uuid.uuid4().hex[:8].upper()}"
 
         # 1. Build market agents (temporal guard: thread the decision date into
         #    every adapter so the default-deny cutoff is enforced).

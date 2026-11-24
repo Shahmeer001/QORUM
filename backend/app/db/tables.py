@@ -23,6 +23,19 @@ class MarketTable(Base):
     why = Column(Text, nullable=False)
 
 
+class RunTable(Base):
+    __tablename__ = "runs"
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    target_market = Column(String, nullable=False)
+    asset = Column(String, nullable=False)
+    horizon = Column(String, default="Swing")
+    day = Column(String, nullable=False)
+    scenario = Column(String, default="neutral")
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+
 class SessionTable(Base):
     __tablename__ = "sessions"
     id = Column(String, primary_key=True)
@@ -57,4 +70,20 @@ class MessageTable(Base):
     reason = Column(Text, nullable=False)
     evidence_json = Column(Text, default="[]")
     is_visible = Column(Integer, default=1)
+    created_at = Column(DateTime, default=utc_now)
+
+
+class DailyDecisionTable(Base):
+    __tablename__ = "daily_decisions"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String, ForeignKey("runs.id"), nullable=False)
+    date = Column(String, nullable=False)
+    target_market = Column(String, nullable=False)
+    mode = Column(String, nullable=False)
+    consensus_action = Column(String, nullable=False)
+    final_action = Column(String, nullable=False)
+    risk_status = Column(String, nullable=False)
+    risk_note = Column(Text, nullable=True)
+    fill_price = Column(Float, nullable=True)
+    position_held = Column(Integer, default=0)
     created_at = Column(DateTime, default=utc_now)
