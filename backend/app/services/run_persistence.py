@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
-from app.db.tables import DailyDecisionTable, EquityPointTable, TradeTable
+from app.db.tables import DailyDecisionTable, EquityPointTable, RiskEventTable, TradeTable
 from app.simulator.replay_simulator import DailyDecisionRecord, SimulationResult
 
 
@@ -119,6 +119,19 @@ def persist_run(
             equity=pt.v,
         )
         db.add(row)
+
+    # 6. Persist risk events derived from overridden daily decisions.
+    #    One row per day where risk_status == OVERRIDDEN; level maps to 'override'.
+    from app.domain.enums import RiskStatus
+    for d in result.daily_decisions:
+        if d.risk_status == RiskStatus.OVERRIDDEN:
+            row = RiskEventTable(
+                session_id=run_id,
+                timestamp=d.date,
+                level="override",
+                description=d.reason or f"Risk override on {d.date}",
+            )
+            db.add(row)
 
     db.commit()
     return run_id

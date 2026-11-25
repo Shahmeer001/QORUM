@@ -108,3 +108,12 @@ class EquityPointTable(Base):
     point_order = Column(Integer, nullable=False)
     label = Column(String, nullable=False)
     equity = Column(Float, nullable=False)
+
+
+class RiskEventTable(Base):
+    __tablename__ = "risk_events"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, ForeignKey("sessions.id"), nullable=False)
+    timestamp = Column(String, nullable=False)
+    level = Column(String, nullable=False)   # 'ok', 'warn', 'override'
+    description = Column(Text, nullable=False)

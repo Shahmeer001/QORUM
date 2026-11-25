@@ -87,6 +87,17 @@ def test_persist_run_stores_daily_decisions():
                 fill_price=None,
                 position_held=0,
             ),
+            DailyDecisionRecord(
+                date="2025-01-08",
+                target="US",
+                mode=Mode.DEBATE,
+                consensus=Action.BUY,
+                final_action=Action.HOLD,
+                risk_status=RiskStatus.OVERRIDDEN,
+                reason="Drawdown (6.00%) breached limit (5.0%). Risk forced HOLD.",
+                fill_price=None,
+                position_held=0,
+            ),
         ],
         degraded_days=[],
         benchmark_buy_hold_return_pct=4.0,
@@ -108,7 +119,7 @@ def test_persist_run_stores_daily_decisions():
     dd_rows = session.execute(
         text("SELECT COUNT(*) FROM daily_decisions WHERE run_id = :rid"), {"rid": run_id}
     ).scalar()
-    assert dd_rows == 2
+    assert dd_rows == 3
 
     # Verify trades rows inserted (Item 5).
     trade_rows = session.execute(
@@ -121,6 +132,12 @@ def test_persist_run_stores_daily_decisions():
         text("SELECT COUNT(*) FROM equity_points WHERE session_id = :sid"), {"sid": run_id}
     ).scalar()
     assert eq_rows == 2, f"Expected 2 equity_point rows, got {eq_rows}"
+
+    # Verify risk_events rows inserted for OVERRIDDEN decisions (task (c)).
+    re_rows = session.execute(
+        text("SELECT COUNT(*) FROM risk_events WHERE session_id = :sid"), {"sid": run_id}
+    ).scalar()
+    assert re_rows == 1, f"Expected 1 risk_event row for the overridden day, got {re_rows}"
 
     # Cleanup.
     session.close()
