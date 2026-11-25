@@ -1,0 +1,106 @@
+{
+  "market": "US",
+  "split": {
+    "learning_window": [
+      "2022-01-03",
+      "2023-12-31"
+    ],
+    "note": "Validation-experiment knowledge: 2022-2023 only."
+  },
+  "baseline": {
+    "total_bars": 501,
+    "win_rate_pct": 49.7
+  },
+  "patterns": {
+    "D-D-D": {
+      "count": 61,
+      "win_rate_pct": 55.74,
+      "lift": 1.1215
+    },
+    "D-D-U": {
+      "count": 61,
+      "win_rate_pct": 42.62,
+      "lift": 0.8576
+    },
+    "D-U-U": {
+      "count": 63,
+      "win_rate_pct": 46.03,
+      "lift": 0.9262
+    },
+    "U-U-D": {
+      "count": 61,
+      "win_rate_pct": 52.46,
+      "lift": 1.0556
+    },
+    "U-D-U": {
+      "count": 58,
+      "win_rate_pct": 58.62,
+      "lift": 1.1795
+    },
+    "D-U-D": {
+      "count": 57,
+      "win_rate_pct": 45.61,
+      "lift": 0.9178
+    },
+    "U-D-D": {
+      "count": 58,
+      "win_rate_pct": 44.83,
+      "lift": 0.902
+    },
+    "U-U-U": {
+      "count": 57,
+      "win_rate_pct": 47.37,
+      "lift": 0.9531
+    },
+    "D-U-S": {
+      "count": 2,
+      "win_rate_pct": 50.0,
+      "lift": 1.0061
+    },
+    "U-S-U": {
+      "count": 1,
+      "win_rate_pct": 100.0,
+      "lift": 2.0121
+    },
+    "S-U-U": {
+      "count": 2,
+      "win_rate_pct": 100.0,
+      "lift": 2.0121
+    },
+    "U-U-S": {
+      "count": 3,
+      "win_rate_pct": 0.0,
+      "lift": 0.0
+    },
+    "U-S-D": {
+      "count": 4,
+      "win_rate_pct": 50.0,
+      "lift": 1.0061
+    },
+    "S-D-D": {
+      "count": 2,
+      "win_rate_pct": 50.0,
+      "lift": 1.0061
+    },
+    "S-D-U": {
+      "count": 3,
+      "win_rate_pct": 100.0,
+      "lift": 2.0121
+    },
+    "U-D-S": {
+      "count": 2,
+      "win_rate_pct": 50.0,
+      "lift": 1.0061
+    },
+    "D-S-U": {
+      "count": 1,
+      "win_rate_pct": 100.0,
+      "lift": 2.0121
+    },
+    "D-S-D": {
+      "count": 1,
+      "win_rate_pct": 100.0,
+      "lift": 2.0121
+    }
+  }
+}

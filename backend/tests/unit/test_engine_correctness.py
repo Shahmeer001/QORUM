@@ -5,12 +5,14 @@ Enforces:
 (b) Always-flat returns exactly 0.0 PnL and 0.0 Drawdown
 (c) Perfect-foresight oracle produces a strongly positive result
 (d) Sign of a short verified with a hand-built falling series
+(e) Sharpe ratio is negative on a falling equity curve (Item 6)
+(f) Short cash accounting verified on hand-built falling series (Item 6)
 """
 from __future__ import annotations
 
 import pytest
 from app.domain.enums import Action
-from app.domain.models import Candle
+from app.domain.models import Candle, EquityPoint
 from app.simulator.metrics import compute_full_metrics
 from app.simulator.trade_engine import (
     MarketFriction,
@@ -140,3 +142,73 @@ def test_engine_short_sign_verified_on_falling_series():
 
     assert long_pnl < 0
     assert net_pnl * long_pnl < 0, "Short and Long on a falling series must have opposite signs!"
+
+
+def test_sharpe_negative_on_falling_equity_curve():
+    """
+    (e) An equity curve that strictly falls day by day must produce a negative Sharpe ratio.
+    """
+    falling_equity = [
+        EquityPoint(t=f"2026-01-{i+1:02d}", v=float(10000 - i * 100))
+        for i in range(10)
+    ]
+    perf = compute_full_metrics(
+        trades=[],
+        equity=falling_equity,
+        total_days=10,
+        days_exposed=0,
+        total_volume_traded=0.0,
+        initial_capital=10000.0,
+    )
+    assert perf.sharpe_ratio < 0, (
+        f"Sharpe must be negative on a falling equity curve, got {perf.sharpe_ratio}"
+    )
+
+
+def test_short_cash_accounting_hand_built_series():
+    """
+    (f) Hand-built short: initial_capital=10000, raw_entry=100, raw_exit=80 (20% drop).
+
+    Short entry fill = 100*(1-0.0002) = 99.98
+    Short exit fill  = 80*(1+0.0002)  = 80.016
+    Units = 10000/99.98 ≈ 100.02
+    Net PnL > 0 (short on falling series is profitable).
+    After cover, cash ≈ initial_capital + net_pnl (within 0.01).
+    """
+    friction = MarketFriction(commission=0.0002, slippage=0.0002)
+    initial_capital = 10000.0
+    raw_entry = 100.0
+    raw_exit = 80.0
+
+    # Short entry fill: raw * (1 - slippage)
+    entry_fill = execute_fill(Action.SELL, raw_entry, friction, is_entry=True, is_short=True)
+    assert entry_fill == pytest.approx(raw_entry * (1 - 0.0002), rel=1e-6)
+
+    # Short exit (cover) fill: raw * (1 + slippage)
+    exit_fill = execute_fill(Action.SELL, raw_exit, friction, is_entry=False, is_short=True)
+    assert exit_fill == pytest.approx(raw_exit * (1 + 0.0002), rel=1e-6)
+
+    units = initial_capital / entry_fill
+
+    net_pnl, total_comm, gross = calculate_trade_pnl(
+        entry_fill=entry_fill,
+        exit_fill=exit_fill,
+        units=units,
+        friction=friction,
+        is_short=True,
+    )
+
+    # Gross PnL = units * (entry_fill - exit_fill) > 0 (falling series)
+    assert gross > 0, f"Gross short PnL must be positive on falling price, got {gross}"
+    assert net_pnl > 0, f"Net short PnL must be positive on falling price, got {net_pnl}"
+
+    # Cash balance after short + cover:
+    #   open short:  cash increases by (units*entry_fill - entry_comm)
+    #   cover short: cash decreases by (units*exit_fill + exit_comm)
+    entry_comm = units * entry_fill * friction.commission
+    exit_comm = units * exit_fill * friction.commission
+    cash_after = initial_capital + (units * entry_fill - entry_comm) - (units * exit_fill + exit_comm)
+    assert cash_after == pytest.approx(initial_capital + net_pnl, abs=0.01), (
+        f"Cash after short cover must equal initial_capital + net_pnl. "
+        f"Got cash_after={cash_after:.4f}, expected={initial_capital + net_pnl:.4f}"
+    )

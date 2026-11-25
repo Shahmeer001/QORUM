@@ -1,0 +1,151 @@
+{
+  "market": "CRYPTO",
+  "split": {
+    "learning_window": [
+      "2022-01-03",
+      "2023-12-31"
+    ],
+    "note": "Validation-experiment knowledge: 2022-2023 only."
+  },
+  "baseline": {
+    "total_bars": 17471,
+    "win_rate_pct": 50.54
+  },
+  "patterns": {
+    "U-D-D": {
+      "count": 1820,
+      "win_rate_pct": 57.53,
+      "lift": 1.1384
+    },
+    "D-D-U": {
+      "count": 1836,
+      "win_rate_pct": 50.38,
+      "lift": 0.997
+    },
+    "D-U-U": {
+      "count": 1870,
+      "win_rate_pct": 44.71,
+      "lift": 0.8846
+    },
+    "U-U-D": {
+      "count": 1885,
+      "win_rate_pct": 51.51,
+      "lift": 1.0193
+    },
+    "U-D-U": {
+      "count": 2031,
+      "win_rate_pct": 47.32,
+      "lift": 0.9363
+    },
+    "D-U-D": {
+      "count": 1974,
+      "win_rate_pct": 53.65,
+      "lift": 1.0616
+    },
+    "U-D-S": {
+      "count": 275,
+      "win_rate_pct": 52.73,
+      "lift": 1.0434
+    },
+    "D-S-U": {
+      "count": 260,
+      "win_rate_pct": 43.85,
+      "lift": 0.8676
+    },
+    "S-U-U": {
+      "count": 231,
+      "win_rate_pct": 40.26,
+      "lift": 0.7967
+    },
+    "D-D-D": {
+      "count": 1300,
+      "win_rate_pct": 59.85,
+      "lift": 1.1842
+    },
+    "U-U-U": {
+      "count": 1413,
+      "win_rate_pct": 41.33,
+      "lift": 0.8179
+    },
+    "U-U-S": {
+      "count": 216,
+      "win_rate_pct": 44.44,
+      "lift": 0.8795
+    },
+    "U-S-D": {
+      "count": 285,
+      "win_rate_pct": 51.93,
+      "lift": 1.0276
+    },
+    "S-D-U": {
+      "count": 279,
+      "win_rate_pct": 51.61,
+      "lift": 1.0213
+    },
+    "D-U-S": {
+      "count": 302,
+      "win_rate_pct": 49.01,
+      "lift": 0.9698
+    },
+    "U-S-U": {
+      "count": 231,
+      "win_rate_pct": 51.52,
+      "lift": 1.0194
+    },
+    "D-S-D": {
+      "count": 230,
+      "win_rate_pct": 59.13,
+      "lift": 1.1701
+    },
+    "S-U-D": {
+      "count": 266,
+      "win_rate_pct": 47.74,
+      "lift": 0.9448
+    },
+    "S-D-D": {
+      "count": 220,
+      "win_rate_pct": 58.64,
+      "lift": 1.1603
+    },
+    "D-D-S": {
+      "count": 203,
+      "win_rate_pct": 52.71,
+      "lift": 1.043
+    },
+    "S-D-S": {
+      "count": 65,
+      "win_rate_pct": 53.85,
+      "lift": 1.0655
+    },
+    "S-U-S": {
+      "count": 50,
+      "win_rate_pct": 26.0,
+      "lift": 0.5145
+    },
+    "D-S-S": {
+      "count": 53,
+      "win_rate_pct": 54.72,
+      "lift": 1.0827
+    },
+    "S-S-U": {
+      "count": 56,
+      "win_rate_pct": 39.29,
+      "lift": 0.7774
+    },
+    "U-S-S": {
+      "count": 52,
+      "win_rate_pct": 48.08,
+      "lift": 0.9514
+    },
+    "S-S-D": {
+      "count": 49,
+      "win_rate_pct": 59.18,
+      "lift": 1.1711
+    },
+    "S-S-S": {
+      "count": 15,
+      "win_rate_pct": 46.67,
+      "lift": 0.9234
+    }
+  }
+}

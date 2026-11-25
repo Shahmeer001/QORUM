@@ -114,6 +114,8 @@ class SimulationResult:
     max_gross_exposure_ratio: float = 0.0
     # Final learned accuracy per market for this target's replay (Part 0.1).
     final_accuracy: Dict[str, float] = field(default_factory=dict)
+    # Count of days where the risk layer overrode the consensus (veto_source != "").
+    risk_veto_count: int = 0
 
 
 class BarByBarSimulator:
@@ -313,6 +315,7 @@ class BarByBarSimulator:
 
         # Running drawdown for risk veto (Part 0.3): peak equity seen so far.
         equity_peak = self.initial_capital
+        risk_veto_count = 0
         # Cool-off counter (Item 1): counts down after a drawdown breach.
         cooloff_remaining: int = 0
 
@@ -392,6 +395,10 @@ class BarByBarSimulator:
                 candles=closed_candles,
                 running_drawdown_pct=running_dd,
             )
+
+            # Count risk vetoes (any day where the risk layer overrode consensus).
+            if veto_source:
+                risk_veto_count += 1
 
             # Cool-off logic (Item 1): after a drawdown breach, block new entries
             # for drawdown_cooloff_days more days.
@@ -653,4 +660,5 @@ class BarByBarSimulator:
             max_entry_leverage_ratio=round(max_entry_leverage_ratio, 6),
             max_gross_exposure_ratio=round(max_gross_exposure_ratio, 6),
             final_accuracy=accuracy_tracker.snapshot(),
+            risk_veto_count=risk_veto_count,
         )
