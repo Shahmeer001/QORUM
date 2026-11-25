@@ -1,0 +1,12 @@
+{
+  "window": [
+    "2022-01-03",
+    "2024-12-31"
+  ],
+  "percentile": 90,
+  "decision_days": 753,
+  "thresholds": {
+    "US": 1.69,
+    "CRYPTO": 0.95
+  }
+}

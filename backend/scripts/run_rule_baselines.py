@@ -9,8 +9,8 @@ Three traders per rule set R1-R5, per target market (US, CRYPTO):
      it is "technically wrong" because a correct null model should preserve trigger
      frequency but randomise only direction; this is documented here and in
      docs/status/baseline_note.md. The result is kept as a sensitivity check.
-  C. Matched-random-timing baseline: BUY/SELL/HOLD drawn uniformly at random,
-     independent of whether the rule fires, 200 seeds.
+  C. Matched-random-timing baseline: long each day with probability equal to the
+     rule's own exposure, otherwise flat, 200 seeds.
 
 All three use the SAME execution engine, fill rule, and friction as BarByBarSimulator:
   - SPY fills at the next US trading day's open.
@@ -98,9 +98,9 @@ def _btc_cutoff_idx(btc_df: pd.DataFrame, eval_date) -> int:
     return idx
 
 
-def _val_days_us(spy_df: pd.DataFrame) -> List:
-    start = pd.to_datetime(VAL_START).date()
-    end = pd.to_datetime(VAL_END).date()
+def _val_days_us(spy_df: pd.DataFrame, start: str = VAL_START, end: str = VAL_END) -> List:
+    start = pd.to_datetime(start).date()
+    end = pd.to_datetime(end).date()
     return [d for d in spy_df["dt"] if start <= d <= end]
 
 
@@ -157,10 +157,11 @@ def _simulate_from_signals(
             perf.trade_count, perf.exposure_pct)
 
 
-def _run_all(spy_path: Path, btc_path: Path) -> List[RunResult]:
+def _run_all(spy_path: Path, btc_path: Path, start: str = VAL_START,
+             end: str = VAL_END) -> List[RunResult]:
     spy_df, spy_by_date = _load_spy(spy_path)
     btc_df = _load_btc(btc_path)
-    us_days = _val_days_us(spy_df)
+    us_days = _val_days_us(spy_df, start, end)
     crypto_days = [d for d in us_days if _btc_has_data(btc_df, d)]
 
     results: List[RunResult] = []
@@ -226,12 +227,12 @@ def _run_all(spy_path: Path, btc_path: Path) -> List[RunResult]:
             results.append(RunResult(rule, "trigger_random_mean", target, -1,
                                      sum(pnl_b)/N_SEEDS, sum(dd_b)/N_SEEDS, sum(sh_b)/N_SEEDS, 0.0, 0, 0.0))
 
-            # C. Matched-random-timing (200 seeds): uniform BUY/SELL/NONE, ignores rule
-            pool = ["BUY", "SELL", "NONE"]
+            # C. Matched-random-timing: long with probability = this rule's exposure
+            p_long = exp / 100.0
             pnl_c, dd_c, sh_c = [], [], []
             for seed in range(N_SEEDS):
                 rng2 = random.Random(seed + 9000)
-                timing = {d: rng2.choice(pool) for d in days}
+                timing = {d: ("BUY" if rng2.random() < p_long else "SELL") for d in days}  # SELL = flat
                 p, d2, s, *_ = _simulate_from_signals(
                     target, days, timing, spy_by_date, btc_df,
                     exec_raw_map=exec_raw_map, curr_close_map=curr_close_map)
@@ -242,31 +243,44 @@ def _run_all(spy_path: Path, btc_path: Path) -> List[RunResult]:
     return results
 
 
+NOTES = [
+    "- `rule`: follows the signal. BUY = long, SELL = flat, no signal = keep.",
+    "- `trigger_random_mean`: when the rule fires, BUY or SELL 50/50 (200 seeds). A sensitivity"
+    " check only: it does not keep the rule's directional bias.",
+    "- `timing_random_mean`: long each day with probability equal to that rule's exposure,"
+    " otherwise flat (200 seeds). The primary null model. It trades more often than the rule,"
+    " so it pays more friction.",
+    "- All run on `app/simulator/signal_engine.py`; open positions are closed at the last close."
+    " Return(%) is from initial capital. Hit% and Exposure are not reported for random rows.",
+]
+
+
+def result_table(results: List[RunResult]) -> List[str]:
+    lines = ["| Target | Rule | Trader | Return(%) | MaxDD(%) | Sharpe | Hit% | Exposure% |",
+             "|---|---|---|---|---|---|---|---|"]
+    for r in results:
+        hit, exposure = (f"{r.hit_rate_pct:.1f}", f"{r.exposure_pct:.1f}") if r.trader == "rule" else ("—", "—")
+        lines.append(f"| {r.target} | {r.rule} | {r.trader} | {r.pnl_pct:+.2f} |"
+                     f" {r.max_dd_pct:.2f} | {r.sharpe:.2f} | {hit} | {exposure} |")
+    return lines
+
+
 def _write_report(results: List[RunResult], out_path: Path) -> None:
+    expected = 2 * len(RULE_SETS) * 3
+    if len(results) != expected:
+        raise RuntimeError(f"incomplete results: {len(results)} of {expected} rows")
     lines = [
         "# Rule-Set Baselines — Validation Window (2024-01-01 to 2024-12-31)",
         "",
-        "> Preliminary (FYP1). Validation window only.",
-        "> Test window (2025-2026) is held out.",
+        "> Preliminary (FYP1). Validation window only; the test window is held out.",
         "",
-        "**Note on rule-trigger random baseline**: when a rule fires, direction is chosen",
-        "uniformly at random (BUY or SELL, 50/50). The supervisor noted this is technically",
-        "wrong because it does not preserve the original directional bias of the rule.",
-        "It is kept as a sensitivity check; the matched-random-timing baseline (C) is the",
-        "primary null model.",
+        *NOTES,
+        "- Parameters (`settings.py`): RSI 14, buy<30, sell>70; MACD (12,26,9); Bollinger (20, 2 std).",
         "",
-        "Parameters (all from `settings.py`): RSI period 14, buy<30, sell>70;",
-        "MACD (12,26,9); Bollinger (20, 2 std).",
+        *result_table(results),
         "",
-        "| Target | Rule | Trader | Return(%) | MaxDD(%) | Sharpe | Hit%(approx) | Exposure% |",
-        "|---|---|---|---|---|---|---|---|",
+        f"End of report: {len(results)} rows (2 targets x {len(RULE_SETS)} rules x 3 traders).",
     ]
-    for r in results:
-        lines.append(
-            f"| {r.target} | {r.rule} | {r.trader} |"
-            f" {r.pnl_pct:+.2f} | {r.max_dd_pct:.2f} | {r.sharpe:.2f} |"
-            f" {r.hit_rate_pct:.1f} | {r.exposure_pct:.1f} |"
-        )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Report written to {out_path}")

@@ -151,3 +151,65 @@ CRYPTO shares the marking code, but its fill (open of the candle starting at the
 ## 7. Later changes
 
 Sections 3 and 4 describe the original debate thresholds. The thresholds were later changed (protocol.md section 12); both runs are compared in validation_experiment.md section 3.
+
+## 8. Cool-off grid rerun with the final code (before the freeze)
+
+Criterion from protocol.md section 10, applied mechanically: per target, lowest mean MaxDD across the four modes, ties to the shorter value. Debate uses the learned thresholds.
+
+| Target | Cool-off | single | unweighted | weighted | debate | Mean MaxDD % |
+|---|---|---|---|---|---|---|
+| US | 1 | 9.71 | 5.11 | 9.71 | 9.71 | 8.560 |
+| US | 3 | 9.71 | 5.11 | 9.71 | 9.71 | 8.560 |
+| US | 5 (chosen) | 9.49 | 5.11 | 9.49 | 9.49 | 8.395 |
+| US | 10 | 12.59 | 5.11 | 12.59 | 12.59 | 10.720 |
+| US | 20 | 11.17 | 5.11 | 11.17 | 11.17 | 9.655 |
+| CRYPTO | 1 | 25.81 | 22.69 | 28.31 | 28.31 | 26.280 |
+| CRYPTO | 3 | 26.39 | 28.70 | 31.85 | 31.85 | 29.698 |
+| CRYPTO | 5 | 27.78 | 26.91 | 32.79 | 32.79 | 30.067 |
+| CRYPTO | 10 | 25.86 | 22.04 | 25.86 | 25.86 | 24.905 |
+| CRYPTO | 20 (chosen) | 17.16 | 21.69 | 17.16 | 17.16 | 18.293 |
+
+**Chosen: US 5, CRYPTO 20 (unchanged).**
+
+| Days | Target | Mode | Return % | MaxDD % | Sharpe | Vetoed days | Trades |
+|---|---|---|---|---|---|---|---|
+| 1 | US | single | 16.78 | 9.71 | 1.3 | 4 | 3 |
+| 1 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 1 | US | silent_weighted | 15.02 | 9.71 | 1.18 | 4 | 4 |
+| 1 | US | debate | 15.02 | 9.71 | 1.18 | 4 | 4 |
+| 1 | CRYPTO | single | 55.48 | 25.81 | 1.32 | 30 | 30 |
+| 1 | CRYPTO | silent_unweighted | 25.12 | 22.69 | 0.75 | 34 | 39 |
+| 1 | CRYPTO | silent_weighted | 41.96 | 28.31 | 1.1 | 32 | 32 |
+| 1 | CRYPTO | debate | 41.96 | 28.31 | 1.1 | 32 | 32 |
+| 3 | US | single | 15.97 | 9.71 | 1.25 | 8 | 3 |
+| 3 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 3 | US | silent_weighted | 14.22 | 9.71 | 1.13 | 8 | 4 |
+| 3 | US | debate | 14.22 | 9.71 | 1.13 | 8 | 4 |
+| 3 | CRYPTO | single | 54.16 | 26.39 | 1.32 | 56 | 26 |
+| 3 | CRYPTO | silent_unweighted | 26.07 | 28.7 | 0.77 | 64 | 35 |
+| 3 | CRYPTO | silent_weighted | 31.06 | 31.85 | 0.91 | 60 | 28 |
+| 3 | CRYPTO | debate | 31.06 | 31.85 | 0.91 | 60 | 28 |
+| 5 | US | single | 15.82 | 9.49 | 1.25 | 12 | 3 |
+| 5 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 5 | US | silent_weighted | 14.07 | 9.49 | 1.13 | 12 | 4 |
+| 5 | US | debate | 14.07 | 9.49 | 1.13 | 12 | 4 |
+| 5 | CRYPTO | single | 35.49 | 27.78 | 1.04 | 78 | 25 |
+| 5 | CRYPTO | silent_unweighted | 26.15 | 26.91 | 0.81 | 90 | 29 |
+| 5 | CRYPTO | silent_weighted | 15.79 | 32.79 | 0.6 | 84 | 27 |
+| 5 | CRYPTO | debate | 15.79 | 32.79 | 0.6 | 84 | 27 |
+| 10 | US | single | 9.2 | 12.59 | 0.79 | 22 | 3 |
+| 10 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 10 | US | silent_weighted | 9.2 | 12.59 | 0.79 | 22 | 3 |
+| 10 | US | debate | 9.2 | 12.59 | 0.79 | 22 | 3 |
+| 10 | CRYPTO | single | -0.38 | 25.86 | 0.14 | 119 | 24 |
+| 10 | CRYPTO | silent_unweighted | 5.05 | 22.04 | 0.32 | 119 | 28 |
+| 10 | CRYPTO | silent_weighted | -0.38 | 25.86 | 0.14 | 119 | 24 |
+| 10 | CRYPTO | debate | -0.38 | 25.86 | 0.14 | 119 | 24 |
+| 20 | US | single | 8.52 | 11.17 | 0.76 | 42 | 3 |
+| 20 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 20 | US | silent_weighted | 8.52 | 11.17 | 0.76 | 42 | 3 |
+| 20 | US | debate | 8.52 | 11.17 | 0.76 | 42 | 3 |
+| 20 | CRYPTO | single | 30.49 | 17.16 | 1.03 | 147 | 15 |
+| 20 | CRYPTO | silent_unweighted | 30.14 | 21.69 | 0.98 | 168 | 15 |
+| 20 | CRYPTO | silent_weighted | 30.49 | 17.16 | 1.03 | 147 | 15 |
+| 20 | CRYPTO | debate | 30.49 | 17.16 | 1.03 | 147 | 15 |

@@ -624,8 +624,8 @@ def _write_report(
         "",
         "- All 2024 figures are optimistic: cool-off lengths (US 5, CRYPTO 20) were selected on this"
         " window, and the debate thresholds were changed after seeing its result.",
-        "- The cool-off selection ran with the original debate thresholds and before the Return(%)"
-        " and Buy-and-Hold cost changes. It was not repeated.",
+        "- The cool-off grid was repeated with the final code; the chosen values did not change."
+        "",
         "- The drawdown peak is rebased at each re-arm, so total drawdown can exceed the 5% limit.",
         "- HOLD keeps the open position (protocol.md section 10); chosen to match the protocol,"
         " not for returns.",

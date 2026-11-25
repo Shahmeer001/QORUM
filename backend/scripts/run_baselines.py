@@ -1,7 +1,7 @@
 """
 WP4 Baseline Comparisons & Random Trader Benchmark.
-Runs through the EXACT same engine, fills, friction, test window (2025-01-01 to 2026-11-20),
-and evaluation days (474 days):
+Runs on the VALIDATION window (2024) only. The test window is opened solely by
+run_final_test.py.
 1. Buy-and-Hold for US (SPY) and CRYPTO (BTC)
 2. Always-Flat (Zero exposure)
 3. Seeded Random Trader: 200 random seeds (evaluates mean and spread of return, drawdown, Sharpe)
@@ -22,6 +22,11 @@ from app.domain.models import EquityPoint
 from app.simulator.metrics import compute_full_metrics
 from app.simulator.replay_simulator import BarByBarSimulator
 from app.simulator.signal_engine import price_arrays, simulate_positions
+
+
+class ValidationWindow(BarByBarSimulator):
+    TEST_START = "2024-01-01"
+    TEST_END = "2024-12-31"
 
 
 def run_buy_and_hold(sim: BarByBarSimulator, target_market: str) -> dict:
@@ -131,7 +136,7 @@ def main():
     print("=" * 90)
     print("QUORUM BASELINES EVALUATION (SAME ENGINE, FILLS, FRICTION, AND DAYS)")
     print("=" * 90)
-    sim = BarByBarSimulator()
+    sim = ValidationWindow()
 
     for target in ["US", "CRYPTO"]:
         print(f"\n--- Target: {target} ---")
