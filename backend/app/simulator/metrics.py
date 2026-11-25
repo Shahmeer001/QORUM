@@ -97,12 +97,14 @@ def compute_full_metrics(
             trading_days_count=total_days,
         )
 
-    start_v = equity[0].v
+    # Return is measured from initial capital: the first equity point may already
+    # include entry costs. Drawdown and daily returns still follow the curve.
+    start_v = initial_capital
     end_v = equity[-1].v
     pnl_dollars = round(end_v - start_v, 2)
     pnl_pct = round(((end_v - start_v) / start_v) * 100.0, 2)
 
-    peak = start_v
+    peak = equity[0].v
     max_dd = 0.0
     for pt in equity:
         if pt.v > peak:

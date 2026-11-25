@@ -143,6 +143,11 @@ A US order decided on day i fills at day i+1's open, but day i's equity was mark
 
 CRYPTO shares the marking code, but its fill (open of the candle starting at the cutoff) happens at the mark time, so marking after the fill is correct.
 
-**Still open:**
-- `scripts/run_baselines.py` and `scripts/run_rule_baselines.py` have their own engines and were not checked by a test or changed; rule_baselines_validation.md may carry the same error.
-- Return % is measured from the first equity point, not initial capital. For CRYPTO that point already includes the first entry's costs, so those costs are left out of Return %.
+**Resolved afterwards:**
+- `run_baselines.py` and `run_rule_baselines.py` had the same bug (hand-built test `tests/unit/test_baseline_marking.py` failed on both). Both now use `app/simulator/signal_engine.py`, which also closes any open position at the last close. R1-R5 were rerun (rule_baselines_validation.md): drawdown, Sharpe, hit rate and some returns moved.
+- Return % is now measured from initial capital, and buy-and-hold pays commission.
+- `run_baselines.py` was **not run**: it still defaults to the held-out test window.
+
+## 7. Later changes
+
+Sections 3 and 4 describe the original debate thresholds. The thresholds were later changed (protocol.md section 12); both runs are compared in validation_experiment.md section 3.

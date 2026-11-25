@@ -38,11 +38,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config.settings import DATA_CACHE_DIR, INITIAL_CAPITAL, get_us_close_utc
-from app.domain.enums import Action
-from app.domain.models import EquityPoint, Trade
 from app.signals.rule_sets import evaluate_rule_set
-from app.simulator.metrics import compute_full_metrics
-from app.simulator.trade_engine import calculate_trade_pnl, execute_fill, get_market_friction
+from app.simulator.signal_engine import simulate_positions
 
 # ---------------------------------------------------------------------------
 # Window: VALIDATION ONLY. Do not change to 2025+.
@@ -145,76 +142,19 @@ def _simulate_from_signals(
     curr_close_map: Dict = None,
 ) -> Tuple[float, float, float, float, int, float]:
     """Execute the fill/friction loop given a pre-built {date: signal} dict."""
-    friction = get_market_friction(target)
-    n = len(eval_days)
-    cash = INITIAL_CAPITAL
-    pos = 0
-    units = 0.0
-    entry_fill = 0.0
-    entry_time = ""
-    tot_vol = 0.0
-    days_exp = 0
-    trades: List[Trade] = []
-    equity: List[EquityPoint] = []
-
-    for i, d in enumerate(eval_days):
-        d_str = d.isoformat()
-        raw_signal = day_signals.get(d, "NONE")
-        if raw_signal == "BUY":
-            target_pos = 1
-        elif raw_signal == "SELL":
-            target_pos = -1 if allow_short else 0
-        else:
-            target_pos = pos  # HOLD: keep current position
-
-        # fill price
-        if exec_raw_map and curr_close_map:
-            exec_raw   = exec_raw_map[d]
-            curr_close = curr_close_map[d]
-        elif target == "US":
-            if i + 1 < n:
-                next_d = eval_days[i + 1]
-                exec_raw = float(spy_by_date[next_d]["Open"]) if next_d in spy_by_date else float(spy_by_date[d]["Close"])
-            else:
-                exec_raw = float(spy_by_date[d]["Close"])
-            curr_close = float(spy_by_date[d]["Close"])
-        else:
-            cutoff = get_us_close_utc(d_str)
-            nxt = btc_df[btc_df["open_dt"] >= cutoff].head(1)
-            exec_raw = float(nxt.iloc[0]["Open"]) if len(nxt) > 0 else \
-                       float(btc_df[btc_df["close_dt"] <= cutoff].iloc[-1]["Close"])
-            curr_close = float(btc_df[btc_df["close_dt"] <= cutoff].iloc[-1]["Close"])
-
-        if target_pos != pos:
-            if pos != 0:
-                xfill = execute_fill(
-                    Action.SELL if pos == 1 else Action.BUY,
-                    exec_raw, friction, is_entry=False, is_short=(pos == -1))
-                pnl, _, _ = calculate_trade_pnl(entry_fill, xfill, units, friction, is_short=(pos == -1))
-                xn = units * xfill
-                cash += xn - xn * friction.commission if pos == 1 else -(xn + xn * friction.commission)
-                tot_vol += xn
-                trades.append(Trade(entry=entry_time, exit=d_str,
-                                    side=Action.BUY if pos == 1 else Action.SELL,
-                                    market=target, pnl=round(pnl, 2), note=""))
-                pos = 0; units = 0.0
-            if target_pos != 0:
-                efill = execute_fill(
-                    Action.BUY if target_pos == 1 else Action.SELL,
-                    exec_raw, friction, is_entry=True, is_short=(target_pos == -1))
-                units = cash / efill if efill > 0 else 0.0
-                en = units * efill; ec = en * friction.commission
-                cash -= (en + ec) if target_pos == 1 else -(en - ec)
-                tot_vol += en; entry_fill = efill; entry_time = d_str; pos = target_pos
-
-        eq = (cash + units * curr_close) if pos == 1 else \
-             (cash - units * curr_close) if pos == -1 else cash
-        if pos != 0:
-            days_exp += 1
-        equity.append(EquityPoint(t=d_str, v=round(eq, 2)))
-
-    perf = compute_full_metrics(trades, equity, n, days_exp, tot_vol, INITIAL_CAPITAL)
-    return perf.pnl_pct, perf.max_drawdown_pct, perf.sharpe_ratio, perf.hit_rate_pct, len(trades), perf.exposure_pct
+    """Maps signals to long/flat positions and runs the shared engine.
+    BUY = long, SELL = flat, anything else keeps the position."""
+    if allow_short:
+        raise NotImplementedError("rule baselines are long/flat")
+    if not (exec_raw_map and curr_close_map):
+        raise ValueError("price maps are required")
+    positions = [{"BUY": 1, "SELL": 0}.get(day_signals.get(d, "NONE")) for d in eval_days]
+    perf = simulate_positions(
+        target, eval_days, positions,
+        [exec_raw_map[d] for d in eval_days], [curr_close_map[d] for d in eval_days],
+    )
+    return (perf.pnl_pct, perf.max_drawdown_pct, perf.sharpe_ratio, perf.hit_rate_pct,
+            perf.trade_count, perf.exposure_pct)
 
 
 def _run_all(spy_path: Path, btc_path: Path) -> List[RunResult]:

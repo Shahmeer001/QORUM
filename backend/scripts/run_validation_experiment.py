@@ -41,19 +41,21 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from collections import Counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.adapters.binance_btc import BinanceBTCAdapter
 from app.adapters.us_spy import USMarketAdapter
-from app.agents.brains.fake_brain import FakeBrain
+import app.simulator.replay_simulator as replay
+from app.agents.brains.rule_brain import THRESHOLDS_FILE, RuleBrain
 from app.board.memory_repo import MemoryBoardRepository
 from app.config.settings import DATA_CACHE_DIR, INITIAL_CAPITAL, get_us_close_utc
-from app.domain.enums import Action, Mode, RiskStatus, Role
-from app.domain.models import EquityPoint, Trade
+from app.domain.enums import Action, Mode, MsgType
+from app.domain.models import EquityPoint
 from app.simulator.metrics import compute_full_metrics
 from app.simulator.replay_simulator import BarByBarSimulator, SimulationResult
-from app.simulator.trade_engine import calculate_trade_pnl, execute_fill, get_market_friction
+from app.simulator.signal_engine import price_arrays, simulate_positions
 
 # ---------------------------------------------------------------------------
 # Window definitions — NEVER change these to test-window dates.
@@ -161,6 +163,8 @@ def bootstrap_ci_return(equity: List[EquityPoint], n: int = N_BOOTSTRAP,
     if len(equity) < 2:
         return (0.0, 0.0)
     vals = np.array([pt.v for pt in equity], dtype=float)
+    if vals[0] != INITIAL_CAPITAL:  # first-day costs belong to the return
+        vals = np.insert(vals, 0, INITIAL_CAPITAL)
     daily_ret = np.diff(vals) / vals[:-1]   # fractional daily returns
 
     rng = np.random.default_rng(42)
@@ -190,70 +194,18 @@ def run_random_baseline(sim: ValidationSimulator, target: str,
     Returns mean and std of pnl_pct across seeds.
     """
     target = target.upper()
-    friction = get_market_friction(target)
-    spy_df = sim.spy_df
-    btc_df = sim.btc_df
     all_days = sim.evaluation_days
-    n_days = len(all_days)
-    spy_by_date = {row["parsed_date"]: row for _, row in spy_df.iterrows()}
+    fills, closes = price_arrays(sim, target, all_days)
     pool = [Action.BUY, Action.SELL, Action.HOLD]
-
-    # Fill price and mark per day do not depend on the seed.
-    prices: List[Tuple[float, float]] = []
-    for i, d in enumerate(all_days):
-        if target == "US":
-            next_d = all_days[i + 1] if i + 1 < n_days else None
-            exec_raw = float(spy_by_date[next_d]["Open"]) if next_d else float(spy_by_date[d]["Close"])
-            curr_cl  = float(spy_by_date[d]["Close"])
-        else:
-            cutoff = get_us_close_utc(d.isoformat())
-            nxt = btc_df[btc_df["open_dt"] >= cutoff].head(1)
-            curr_cl = float(btc_df[btc_df["close_dt"] <= cutoff].iloc[-1]["Close"])
-            exec_raw = float(nxt.iloc[0]["Open"]) if len(nxt) else curr_cl
-        prices.append((exec_raw, curr_cl))
 
     pnl_list: List[float] = []
     for seed in range(n_seeds):
         rng = random.Random(seed + 11000)
-        cash = INITIAL_CAPITAL
-        pos = 0; units = 0.0; efill = 0.0; etime = ""
-        tot_vol = 0.0; days_exp = 0
-        trades: List[Trade] = []; equity: List[EquityPoint] = []
-
-        for i, d in enumerate(all_days):
-            d_str = d.isoformat()
-            if p_long is None:
-                tgt_pos = 1 if rng.choice(pool) == Action.BUY else 0  # long/flat only
-            else:
-                tgt_pos = 1 if rng.random() < p_long else 0
-            exec_raw, curr_cl = prices[i]
-            fills_after_mark = target == "US" and i + 1 < n_days
-            book_before_fill = (cash, units, pos)
-
-            if tgt_pos != pos:
-                if pos == 1:
-                    xf = execute_fill(Action.SELL, exec_raw, friction, is_entry=False)
-                    pnl, _, _ = calculate_trade_pnl(efill, xf, units, friction)
-                    xn = units * xf
-                    cash += xn - xn * friction.commission
-                    tot_vol += xn
-                    trades.append(Trade(entry=etime, exit=d_str, side=Action.BUY,
-                                        market=target, pnl=round(pnl, 2), note=""))
-                    pos = 0; units = 0.0
-                if tgt_pos == 1:
-                    ef = execute_fill(Action.BUY, exec_raw, friction, is_entry=True)
-                    units = cash / ef if ef > 0 else 0.0
-                    en = units * ef; ec = en * friction.commission
-                    cash -= (en + ec); tot_vol += en
-                    efill = ef; etime = d_str; pos = 1
-
-            m_cash, m_units, m_pos = book_before_fill if fills_after_mark else (cash, units, pos)
-            eq = (m_cash + m_units * curr_cl) if m_pos == 1 else m_cash
-            if m_pos: days_exp += 1
-            equity.append(EquityPoint(t=d_str, v=round(eq, 2)))
-
-        perf = compute_full_metrics(trades, equity, n_days, days_exp, tot_vol, INITIAL_CAPITAL)
-        pnl_list.append(perf.pnl_pct)
+        if p_long is None:
+            positions = [1 if rng.choice(pool) == Action.BUY else 0 for _ in all_days]
+        else:
+            positions = [1 if rng.random() < p_long else 0 for _ in all_days]
+        pnl_list.append(simulate_positions(target, all_days, positions, fills, closes).pnl_pct)
 
     arr = np.array(pnl_list)
     return {
@@ -267,16 +219,7 @@ def run_random_baseline(sim: ValidationSimulator, target: str,
 def buy_and_hold_risk(sim: ValidationSimulator, target: str) -> Tuple[float, float]:
     """(MaxDD%, Sharpe) of the buy-and-hold equity curve, same fills as the
     benchmark return and the same metric code as the strategies."""
-    target = target.upper()
-    bh = sim.compute_buy_and_hold(target)
-    equity: List[EquityPoint] = []
-    for i, d in enumerate(sim.evaluation_days):
-        held = not (target == "US" and i == 0)  # US entry is the next day's open
-        value = INITIAL_CAPITAL
-        if held:
-            value *= sim._target_close_at(target, d) / bh.entry_fill_price
-        equity.append(EquityPoint(t=d.isoformat(), v=value))
-    equity[-1] = EquityPoint(t=equity[-1].t, v=INITIAL_CAPITAL * (1 + bh.return_pct / 100.0))
+    equity = sim.buy_and_hold_curve(target)
     n = len(equity)
     perf = compute_full_metrics([], equity, n, n, 0.0, INITIAL_CAPITAL)
     return perf.max_drawdown_pct, perf.sharpe_ratio
@@ -370,6 +313,36 @@ def debate_change_analysis(
     }
 
 
+def run_debate_counted(sim: ValidationSimulator, target: str,
+                       brain: Optional[RuleBrain] = None) -> Tuple[SimulationResult, Counter]:
+    """DEBATE run plus counts of what happened on the board."""
+    counts: Counter = Counter()
+    original = replay.run_mode
+
+    def spy(**kw):
+        out = original(**kw)
+        msgs = kw["board"].get_all(kw["session_id"])
+        position = {m.from_market: m.position for m in msgs if m.msg_type == MsgType.RECOMMEND}
+        replies = [m for m in msgs if m.msg_type == MsgType.REPLY]
+        counts["challenge_days"] += any(m.msg_type == MsgType.CHALLENGE for m in msgs)
+        counts["replies"] += len(replies)
+        for m in replies:
+            counts["reply_changes"] += m.position != position[m.from_market]
+            position[m.from_market] = m.position
+        counts["final_stance_changes"] += sum(
+            m.position != position[m.from_market] for m in msgs if m.msg_type == MsgType.FINAL
+        )
+        return out
+
+    replay.run_mode = spy
+    try:
+        result = sim.run_simulation(target_market=target, mode=Mode.DEBATE,
+                                    allow_short=False, brain=brain)
+    finally:
+        replay.run_mode = original
+    return result, counts
+
+
 # ---------------------------------------------------------------------------
 # 6.  Main experiment loop.
 # ---------------------------------------------------------------------------
@@ -442,16 +415,21 @@ def main():
         (Mode.DEBATE,            "DEBATE"),
     ]
 
+    debate_counts: Dict[Tuple[str, str], Counter] = {}
+
     # 3. Run all modes × targets
     for target in ["US", "CRYPTO"]:
         all_results[target] = {}
         for mode_enum, mode_label in modes:
             print(f"  Running {target} / {mode_label}…")
-            result = sim.run_simulation(
-                target_market=target,
-                mode=mode_enum,
-                allow_short=False,
-            )
+            if mode_enum == Mode.DEBATE:
+                result, debate_counts[(target, "learned")] = run_debate_counted(sim, target)
+            else:
+                result = sim.run_simulation(
+                    target_market=target,
+                    mode=mode_enum,
+                    allow_short=False,
+                )
             all_results[target][mode_label] = result
             ci_lo, ci_hi = bootstrap_ci_return(result.equity_curve)
 
@@ -482,20 +460,27 @@ def main():
                 run_id=run_id,
             ))
 
-    # 4. Debate-change analysis vs SILENT_WEIGHTED
+    # 4. Ablation: DEBATE with the original thresholds (needs validation knowledge)
+    for target in ["US", "CRYPTO"]:
+        all_results[target]["DEBATE_ORIG"], debate_counts[(target, "original")] = (
+            run_debate_counted(sim, target, brain=RuleBrain(thresholds={}))
+        )
+
+    # Debate-change analysis vs SILENT_WEIGHTED
     kl.KNOWLEDGE_DIR = orig_knowledge_dir  # restore
     print("Step 3: Debate-change analysis…")
     btc_df_full = sim.btc_df
     btc_df_full["close_dt"] = btc_df_full["open_dt"] + pd.Timedelta(hours=1)
 
-    change_results: Dict[str, dict] = {}
+    change_results: Dict[Tuple[str, str], dict] = {}
     for target in ["US", "CRYPTO"]:
-        sw = all_results[target].get("SILENT_W")
-        db = all_results[target].get("DEBATE")
-        if sw and db:
-            change_results[target] = debate_change_analysis(
-                sw, db, sim.spy_df, btc_df_full, target
-            )
+        sw = all_results[target]["SILENT_W"]
+        for label, key in (("learned", "DEBATE"), ("original", "DEBATE_ORIG")):
+            db = all_results[target][key]
+            row = debate_change_analysis(sw, db, sim.spy_df, btc_df_full, target)
+            row.update(debate_counts[(target, label)])
+            row["return_pct"], row["max_dd"] = db.pnl_pct, db.max_drawdown_pct
+            change_results[(target, label)] = row
 
     # 5. Random baselines
     print("Step 4: Random-timing baselines (200 seeds)…")
@@ -539,7 +524,7 @@ def _write_report(
         "",
         "> **Preliminary (FYP1).** Knowledge learned on 2022-01-03 to 2023-12-31 only.",
         "> Test window (2025-01-01 to 2026-11-20) is held out.",
-        "> Only the drawdown cool-off length was tuned (mode-neutral criterion).",
+        "> Drawdown cool-off lengths were selected on this window; debate thresholds come from the learning window.",
         "",
         f"**Evaluation days:** {len(sim.evaluation_days)}  |  "
         f"**Degraded days (excluded):** {len(sim.degraded_days)}",
@@ -601,43 +586,58 @@ def _write_report(
         "",
         "## 3. Debate vs Silent-Weighted — Change Analysis",
         "",
-        "Days where DEBATE final_action ≠ SILENT_WEIGHTED final_action.",
-        "'Better/Worse' scored against the sign of the realised next-day return.",
-        "HOLD actions are excluded from scoring (no directional conviction).",
+        "'learned' = each agent's learning-window 90th percentile "
+        f"({json.dumps(json.loads(THRESHOLDS_FILE.read_text())['thresholds'])}); "
+        "'original' = 2.0 / 2.4 / 2.0 (ablation). The change was decided after seeing the"
+        " earlier validation result (protocol.md section 12).",
         "",
-        "| Target | Total days | Days changed | % changed | Better | Worse | Neutral |",
-        "|---|---|---|---|---|---|---|",
+        "Final changes = days the post-risk final action differs from SILENT_W. Better/Worse"
+        " score the debate action against the next-day return; a change to HOLD cannot be"
+        " scored and counts as Neutral.",
+        "",
+        "| Target | Thresholds | Challenge days | Replies | Stance changes (reply / final round) |"
+        " Final changes vs SILENT_W | Better | Worse | Neutral | Return(%) | MaxDD(%) |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for target, cr in change_results.items():
+    for (target, label), cr in change_results.items():
         lines.append(
-            f"| {target} | {cr['total_days']} | {cr['n_changed']} |"
-            f" {cr['pct_changed']}% | {cr['n_better']} | {cr['n_worse']} |"
-            f" {cr['n_neutral']} |"
+            f"| {target} | {label} | {cr['challenge_days']} | {cr['replies']} |"
+            f" {cr['reply_changes']} / {cr['final_stance_changes']} |"
+            f" {cr['n_changed']} of {cr['total_days']} | {cr['n_better']} | {cr['n_worse']} |"
+            f" {cr['n_neutral']} | {cr['return_pct']:+.2f} | {cr['max_dd']:.2f} |"
         )
 
     lines += [
         "",
         "## 4. Notes",
         "",
+        "- Return(%) is measured from initial capital. MaxDD and Sharpe follow the daily curve.",
         "- Bootstrap CIs resample daily PnL% contributions (2000 iterations, seed=42).",
-        "- Random-timing baselines are long/flat. Matched random draws each day independently,"
-        " so it trades more than the modes and pays more friction.",
-        "- Buy-and-Hold return and curve include slippage but no commission; strategies pay both.",
-        "- Uniform-random-when-triggered is documented in rule_baselines_validation.md"
-        " as a simplification.",
+        "- Random-timing baselines are long/flat and run on the shared engine. Matched random"
+        " draws each day independently, so it trades more than the modes and pays more friction.",
+        "- Buy-and-Hold pays the same slippage and commission as the strategies.",
         "- All fills use the same rules as BarByBarSimulator (SPY: next-open;"
         " BTC: first 1h candle at 21:00 UTC cutoff).",
         "- Veto counts are days overridden by volatility, drawdown breach or cool-off.",
         "",
-        '## 5. Known Limitations (read before citing)',
-        '',
-        '- The cool-off lengths (US 5 days, CRYPTO 20 days) were selected on this same 2024 window, so these results are optimistic. See breaker_and_debate.md.',
-        '- The drawdown peak is rebased at each re-arm, so total drawdown can exceed the 5% limit.',
-        '- A HOLD decision keeps the open position (protocol.md section 10); only a drawdown breach or cool-off flattens it.',
-        '- DEBATE equals SILENT_W on every day: no debate changed a stance. See breaker_and_debate.md.',
-        '- One year, two assets; the bootstrap intervals are wide and include zero. No mode is shown to be better.',
-        '- Section 3 compares post-risk final actions.',
-        '- No parameter other than the cool-off length was selected here.',
+        "## 5. Known Limitations (read before citing)",
+        "",
+        "- All 2024 figures are optimistic: cool-off lengths (US 5, CRYPTO 20) were selected on this"
+        " window, and the debate thresholds were changed after seeing its result.",
+        "- The cool-off selection ran with the original debate thresholds and before the Return(%)"
+        " and Buy-and-Hold cost changes. It was not repeated.",
+        "- The drawdown peak is rebased at each re-arm, so total drawdown can exceed the 5% limit.",
+        "- HOLD keeps the open position (protocol.md section 10); chosen to match the protocol,"
+        " not for returns.",
+        "- In the uniform and matched random baselines a non-BUY day is flat, not 'keep'.",
+        "- CRYPTO agents use hourly candles and US agents daily candles.",
+        "- One year, two assets; the bootstrap intervals are wide. No mode is shown to be better.",
+        "",
+        "## 6. Future Work",
+        "",
+        "- Debate can only move a stance to HOLD; it cannot turn BUY into SELL or open a trade.",
+        "- A reply ignores the challenge's content and evidence: only the replier's own volatility"
+        " decides. Replies should weigh what the challenger argues.",
     ]
 
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")

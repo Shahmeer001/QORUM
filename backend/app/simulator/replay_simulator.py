@@ -244,7 +244,9 @@ class BarByBarSimulator:
 
         entry_fill = execute_fill(Action.BUY, entry_raw, friction, is_entry=True)
         exit_fill = execute_fill(Action.BUY, exit_raw, friction, is_entry=False)
-        return_pct = round(((exit_fill - entry_fill) / entry_fill) * 100.0, 2)
+        # Same cost model as the strategies: commission on entry and exit notional.
+        c = friction.commission
+        return_pct = round((exit_fill / entry_fill * (1.0 - c) - c - 1.0) * 100.0, 2)
         return BuyHoldBenchmark(
             return_pct=return_pct,
             entry_fill_price=round(entry_fill, 4),
@@ -253,6 +255,21 @@ class BarByBarSimulator:
             exit_date=exit_date.isoformat() if isinstance(exit_date, date) else str(exit_date),
             days_exposed=n_days,
         )
+
+    def buy_and_hold_curve(self, target_market: str) -> List[EquityPoint]:
+        """Daily buy-and-hold equity, same fills, costs and marking as strategies."""
+        target = target_market.upper()
+        bh = self.compute_buy_and_hold(target)
+        commission = get_market_friction(target).commission
+        capital = self.initial_capital
+        curve: List[EquityPoint] = []
+        for i, d in enumerate(self.evaluation_days):
+            value = capital
+            if not (target == "US" and i == 0):  # US entry is the next day's open
+                value *= self._target_close_at(target, d) / bh.entry_fill_price - commission
+            curve.append(EquityPoint(t=d.isoformat(), v=value))
+        curve[-1] = EquityPoint(t=curve[-1].t, v=capital * (1 + bh.return_pct / 100.0))
+        return curve
 
     def _target_close_at(self, target: str, eval_date: date) -> Optional[float]:
         """Target asset close at the US-close cutoff on a given evaluation day."""

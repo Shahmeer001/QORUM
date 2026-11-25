@@ -7,6 +7,8 @@ import pytest
 
 from app.agents.brains.fake_brain import FakeBrain
 from app.domain.enums import Action, Mode
+from app.domain.models import EquityPoint
+from app.simulator.metrics import compute_full_metrics
 from app.simulator.replay_simulator import BarByBarSimulator
 from app.simulator.trade_engine import get_market_friction
 from tests.unit.test_risk_veto_semantics import _write_fixtures
@@ -46,3 +48,11 @@ def test_us_equity_per_day_matches_hand_calculation(tmp_path):
     assert [p.v for p in result.equity_curve] == pytest.approx(expected, abs=0.01)
     assert result.pnl_pct == pytest.approx((expected[-1] / 10000.0 - 1) * 100, abs=0.01)
     assert result.exposure_pct == 75.0       # exposed at 3 of 4 closes
+    # Buy-and-hold pays the same costs, so it equals an always-BUY strategy.
+    assert result.benchmark_buy_hold_return_pct == pytest.approx(result.pnl_pct, abs=0.01)
+
+
+def test_return_is_measured_from_initial_capital():
+    """A first equity point that already paid entry costs must not hide them."""
+    curve = [EquityPoint(t="a", v=9990.0), EquityPoint(t="b", v=10989.0)]
+    assert compute_full_metrics([], curve, 2, 2, 0.0, 10000.0).pnl_pct == 9.89

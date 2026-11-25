@@ -4,10 +4,12 @@ Implements written challenge and reply rules grounded in technical signals and p
 """
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.agents.brains.base import Brain
 from app.agents.state import AgentState
+from app.config.settings import BASE_DIR
 from app.domain.enums import Action, Role
 from app.domain.models import Candle, Message
 from app.signals.candle_patterns import extract_recent_pattern
@@ -15,7 +17,22 @@ from app.signals.rsi import calculate_rsi
 from app.signals.volatility import calculate_realized_volatility
 
 
+THRESHOLDS_FILE = BASE_DIR / "app" / "config" / "debate_thresholds.json"
+# Original fixed debate volatility thresholds: markets without a learned value,
+# and the ablation run (RuleBrain(thresholds={})).
+ORIGINAL_VOL = {"challenge": 2.0, "reply": 2.4, "final": 2.0}
+
+
 class RuleBrain(Brain):
+    def __init__(self, thresholds: Optional[Dict[str, float]] = None) -> None:
+        if thresholds is None:
+            thresholds = json.loads(THRESHOLDS_FILE.read_text(encoding="utf-8"))["thresholds"]
+        self.thresholds = thresholds
+
+    def _vol_threshold(self, market: str, stage: str) -> float:
+        """The agent's own learned percentile (protocol.md section 12)."""
+        return self.thresholds.get(market, ORIGINAL_VOL[stage])
+
     def recommend(
         self, state: AgentState, candles: List[Candle], knowledge: Dict[str, Any]
     ) -> Tuple[Action, float, str, List[str]]:
@@ -67,7 +84,7 @@ class RuleBrain(Brain):
             vol = calculate_realized_volatility(closes)
             rsi = calculate_rsi(closes)
 
-            if opponent_msg.position == Action.BUY and (vol > 2.0 or rsi > 70.0):
+            if opponent_msg.position == Action.BUY and (vol > self._vol_threshold(state.market, "challenge") or rsi > 70.0):
                 reason = (
                     f"Warning to {opponent_msg.from_market}: Breakout lacks cross-market confirmation. "
                     f"Macro volatility is elevated at {vol:.1f}%."
@@ -93,7 +110,7 @@ class RuleBrain(Brain):
         vol = calculate_realized_volatility(closes)
         rsi = calculate_rsi(closes)
 
-        if vol > 2.4:
+        if vol > self._vol_threshold(state.market, "reply"):
             new_pos = Action.HOLD
             conf = 58.0
             reason = (
@@ -121,7 +138,7 @@ class RuleBrain(Brain):
         vol = calculate_realized_volatility(closes)
 
         warnings = [m for m in board_messages if "volatility" in m.reason.lower() or "rotation" in m.reason.lower()]
-        if len(warnings) >= 2 and state.current_position == Action.BUY and vol > 2.0:
+        if len(warnings) >= 2 and state.current_position == Action.BUY and vol > self._vol_threshold(state.market, "final"):
             return (
                 Action.HOLD,
                 62.0,
