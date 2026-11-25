@@ -1,6 +1,7 @@
 """
 WP4 Experiment Runner.
-Executes bar-by-bar historical replay on out-of-sample test window (2025-01-01 to 2026-11-20).
+Executes bar-by-bar historical replay on the VALIDATION window (2024). The held-out test
+window is opened only by run_final_test.py.
 Runs two sessions per day:
 - Target: US (CRYPTO informs)
 - Target: CRYPTO (US informs)
@@ -20,14 +21,19 @@ from app.domain.enums import Mode
 from app.simulator.replay_simulator import BarByBarSimulator
 
 
+class ValidationWindow(BarByBarSimulator):
+    TEST_START = "2024-01-01"
+    TEST_END = "2024-12-31"
+
+
 def run_experiments() -> None:
     print("=" * 80)
     print("QUORUM WP4 HISTORICAL BAR-BY-BAR REPLAY SIMULATION")
-    print("Out-of-Sample Test Window: 2025-01-01 to 2026-11-20")
+    print("Validation Window: 2024-01-01 to 2024-12-31 (in-sample for pattern knowledge)")
     print("Knowledge strictly trained on Learning Window: 2022-01-03 to 2024-12-31")
     print("=" * 80)
 
-    sim = BarByBarSimulator()
+    sim = ValidationWindow()
     print(f"Total Evaluation Days (both markets active): {len(sim.evaluation_days)}")
     print(f"Total Degraded Days (US closed / holiday / weekend): {len(sim.degraded_days)}")
     print("-" * 80)
@@ -51,7 +57,7 @@ def run_experiments() -> None:
     print("\n" + "=" * 125)
     print("WP4 EXPERIMENT RESULTS TABLE — PRELIMINARY (FYP1)")
     print("Mode: DEBATE MODE (Two sessions/day: US informed by CRYPTO; CRYPTO informed by US)")
-    print("Reported separately per target market (never averaged), evaluated on 474 evaluation days")
+    print(f"Reported separately per target market (never averaged), evaluated on {len(sim.evaluation_days)} evaluation days")
     print("=" * 125)
     print(
         f"{'Target Market':<10} | {'Mode':<8} | {'Stance':<10} | {'Return (%)':<10} | {'Max DD (%)':<10} | "

@@ -18,9 +18,14 @@ STALE in `TODAY_PROGRESS_AND_REMAINING_TASKS.md` §3.
 
 | Window | Date range | Purpose |
 |---|---|---|
-| Learning | 2022-01-03 – 2024-12-31 | Build pattern knowledge (`us.json`, `crypto.json`) |
+| Learning (validation runs) | 2022-01-03 – 2023-12-31 | Pattern knowledge in `knowledge_val/`; debate thresholds |
+| Learning (test run) | 2022-01-03 – 2024-12-31 | Pattern knowledge in `knowledge/`; test-run debate thresholds |
 | Validation | 2024-01-01 – 2024-12-31 | Parameter selection, rule tuning, mode comparison |
 | Test (held-out) | 2025-01-01 – 2026-11-20 | Looked at **exactly once**, from the frozen tag |
+
+Validation used knowledge learned from **2022 to 2023** only, so learning and validation do not
+overlap there. The test run relearns from **2022 to 2024**: by then 2024 is past data relative
+to the test window.
 
 > **Rule**: All development (rule thresholds, min_margin, risk limits, signal weights) must be
 > chosen on the validation split only. The test window is opened once, at the end, and the
@@ -164,7 +169,8 @@ Fill rules:
 ## 7. SPY Data Status
 
 - Rows: 1,227 trading days (2022-01-03 to 2026-11-20).
-- SHA-256: `c617dbb50402e607d9a3fa136a5f75b24065f0e772341a7fabb4a2b87211131a`
+- SHA-256 of the raw file: `c617dbb50402e607d9a3fa136a5f75b24065f0e772341a7fabb4a2b87211131a`
+- SHA-256 with CRLF normalised to LF (the value in section 3): `cf84eb64b842aa10198809ec147cfe3fef49c7fd9a19429a7a257daa6dd828e5`. Same file, two line-ending treatments.
 - One correction applied (Part A): 2025-05-22 stale row replaced from Nasdaq crosscheck.
   See `backend/data_cache/SPY_CORRECTIONS.md` for full audit trail.
 - Prices are **unadjusted raw** (no dividend/split adjustment).
@@ -172,7 +178,8 @@ Fill rules:
 ## 8. BTC Data Status
 
 - Rows: 42,791 hourly candles (2022-01-03 00:00 UTC to 2026-11-20 23:00 UTC).
-- SHA-256: `9ee5cce53336453b325509bfe5ca3a7bfbc1ab545a000812aac059f0be426e40`
+- SHA-256 of the raw file: `9ee5cce53336453b325509bfe5ca3a7bfbc1ab545a000812aac059f0be426e40`
+- SHA-256 with CRLF normalised to LF (the value in section 3): `3dddb0563c3362f3ee1e21e7ded9542f8b1b4ae344bb20bb89c0e8c59c2c7feb`. Same file, two line-ending treatments.
 - One missing hour: 2023-03-24 13:00 UTC (Binance matching engine outage, real event).
   No correction applied; gap is documented and within the learning window.
 
@@ -180,23 +187,8 @@ Fill rules:
 
 ## 9. Session IDs
 
-Format: `QRM-{year}-{uuid4().hex}` — 32 hex chars from `uuid.uuid4().hex`, prefixed with
-`QRM-{year}-`.  Example: `QRM-2026-3f4e8a1b2c5d6e7f8a9b0c1d2e3f4a5b`.
-
-**What the `_build_summaries(session_id)` bug was:**  
-The old format used only 3 uppercase hex chars (`uuid.uuid4().hex[:8].upper()` → 8 chars,
-but the concern is that only 4096 total combinations existed with 3 lowercase hex chars in
-an earlier incarnation). Two concurrent sessions in the same process could collide;
-if two sessions shared an ID, `_build_summaries` would have called
-`self.board.get_all("")` (the wrong key) and read messages from the wrong session,
-producing incorrect initial positions or silently skipping messages.
-
-**Why no silent cross-contamination in practice:**  
-The `MemoryBoardRepository` stores messages keyed by `session_id`. With the old short
-suffix, a collision would have caused a duplicate-key error on SQLite insert (the
-`sessions` table uses `session_id` as a primary key), not silent data mixing. The fix
-uses `uuid.uuid4().hex` (32 chars), making collisions astronomically unlikely, and passes
-`session_id` explicitly to all board calls.
+The old format ended in a short random hex suffix taken from `uuid.uuid4().hex`. The new format
+is `QRM-{year}-` followed by the full 32 hex characters.
 
 ---
 
@@ -263,6 +255,14 @@ is changed after seeing the new result.
 ---
 
 ## 13. Final Test Run (written before it is run)
+
+Validation used knowledge learned from 2022-2023; the test run uses 2022-2024.
+
+**Knowledge check (before the run):** `build_learning_window_knowledge.py` filters both CSVs to
+2022-01-03 .. 2024-12-31 before computing anything. It was also rerun on copies of the CSVs
+physically cut at 2024-12-31 (SPY 753 rows, last 2024-12-31; BTC 26,255 hourly rows, last bar
+opening 2024-12-31 23:00 UTC). Both outputs were identical to `knowledge/us.json` and
+`knowledge/crypto.json`.
 
 - (a) For the test run the learned debate thresholds are recomputed on **2022-01-03 to
   2024-12-31** by the same 90th-percentile rule (`compute_debate_thresholds.py --test-run`,
