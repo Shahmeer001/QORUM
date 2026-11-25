@@ -8,76 +8,74 @@ The equity peak was never reset. After a breach the position is flat, so drawdow
 
 **Fix:** drawdown is not re-evaluated during cool-off, and the peak is rebased to current equity at re-arm. New test: `test_breaker_re_arms_on_experiment_code_path`.
 
-## 2. Cool-off grid
+## 2. Cool-off grid (re-run after the HOLD change)
 
-Selection rule, fixed before the run: highest mean Sharpe over 4 modes x 2 targets.
+Selection rule unchanged: highest mean Sharpe over 4 modes x 2 targets. Under option B it picks **1 day** (previously 5).
 
 | Cool-off days | Mean Sharpe | Mean return % |
 |---|---|---|
-| 1 | 0.804 | 15.35 |
-| 3 | 0.985 | 17.40 |
-| 5 (chosen) | 1.066 | 21.45 |
-| 10 | 1.011 | 21.64 |
-| 20 | 0.996 | 19.96 |
-
-The gaps between 3, 5, 10 and 20 are small; this does not show 5 is reliably best.
+| 1 (chosen) | 1.119 | 28.07 |
+| 3 | 1.055 | 25.00 |
+| 5 | 0.944 | 18.79 |
+| 10 | 0.524 | 5.58 |
+| 20 | 0.929 | 20.06 |
 
 **Crypto max drawdown by cool-off (%):**
 
 | Cool-off days | single | silent_unweighted | silent_weighted = debate |
 |---|---|---|---|
-| 1 | 27.40 | 20.39 | 28.75 |
-| 3 | 27.97 | 27.57 | 32.68 |
-| 5 (chosen) | 29.96 | 25.76 | 35.13 |
-| 10 | 26.20 | 18.80 | 26.42 |
-| 20 | 23.68 | 21.69 | 18.68 |
+| 1 | 25.81 | 22.69 | 28.31 |
+| 3 | 26.39 | 28.7 | 31.85 |
+| 5 | 27.78 | 26.91 | 32.79 |
+| 10 | 25.86 | 22.04 | 25.86 |
+| 20 | 17.16 | 21.69 | 17.16 |
 
-The chosen value gives the largest silent_weighted drawdown in the grid. Every cell is far above the 5% limit, because the peak is rebased at each re-arm. The selection rule ignored drawdown.
+The selection rule ignores drawdown. Every crypto cell is far above the 5% limit, because the peak is rebased at each re-arm.
 
 **Full grid:**
 
 | Days | Target | Mode | Return % | MaxDD % | Sharpe | Vetoed days | Trades |
 |---|---|---|---|---|---|---|---|
-| 1 | US | single | 11.14 | 8.58 | 0.9 | 4 | 10 |
-| 1 | US | silent_unweighted | 14.7 | 4.36 | 1.34 | 0 | 39 |
-| 1 | US | silent_weighted | 11.14 | 8.58 | 0.9 | 4 | 10 |
-| 1 | US | debate | 11.14 | 8.58 | 0.9 | 4 | 10 |
-| 1 | CRYPTO | single | 10.28 | 27.4 | 0.45 | 30 | 47 |
-| 1 | CRYPTO | silent_unweighted | 47.9 | 20.39 | 1.14 | 32 | 41 |
-| 1 | CRYPTO | silent_weighted | 8.23 | 28.75 | 0.4 | 32 | 48 |
-| 1 | CRYPTO | debate | 8.23 | 28.75 | 0.4 | 32 | 48 |
-| 3 | US | single | 15.1 | 5.75 | 1.34 | 8 | 9 |
-| 3 | US | silent_unweighted | 14.7 | 4.36 | 1.34 | 0 | 39 |
-| 3 | US | silent_weighted | 15.1 | 5.75 | 1.34 | 8 | 9 |
-| 3 | US | debate | 15.1 | 5.75 | 1.34 | 8 | 9 |
-| 3 | CRYPTO | single | 17.19 | 27.97 | 0.63 | 56 | 40 |
-| 3 | CRYPTO | silent_unweighted | 47.81 | 27.57 | 1.15 | 60 | 36 |
-| 3 | CRYPTO | silent_weighted | 7.1 | 32.68 | 0.37 | 60 | 41 |
-| 3 | CRYPTO | debate | 7.1 | 32.68 | 0.37 | 60 | 41 |
-| 5 | US | single | 15.14 | 5.61 | 1.34 | 12 | 9 |
-| 5 | US | silent_unweighted | 14.7 | 4.36 | 1.34 | 0 | 39 |
-| 5 | US | silent_weighted | 15.14 | 5.61 | 1.34 | 12 | 9 |
-| 5 | US | debate | 15.14 | 5.61 | 1.34 | 12 | 9 |
-| 5 | CRYPTO | single | 19.2 | 29.96 | 0.7 | 66 | 39 |
-| 5 | CRYPTO | silent_unweighted | 71.51 | 25.76 | 1.53 | 84 | 29 |
-| 5 | CRYPTO | silent_weighted | 10.39 | 35.13 | 0.47 | 72 | 39 |
-| 5 | CRYPTO | debate | 10.39 | 35.13 | 0.47 | 72 | 39 |
-| 10 | US | single | 9.29 | 6.87 | 0.88 | 22 | 9 |
-| 10 | US | silent_unweighted | 14.7 | 4.36 | 1.34 | 0 | 39 |
-| 10 | US | silent_weighted | 9.29 | 6.87 | 0.88 | 22 | 9 |
-| 10 | US | debate | 9.29 | 6.87 | 0.88 | 22 | 9 |
-| 10 | CRYPTO | single | 29.08 | 26.2 | 0.99 | 97 | 33 |
-| 10 | CRYPTO | silent_unweighted | 44.11 | 18.8 | 1.16 | 108 | 28 |
-| 10 | CRYPTO | silent_weighted | 28.7 | 26.42 | 0.98 | 97 | 33 |
-| 10 | CRYPTO | debate | 28.7 | 26.42 | 0.98 | 97 | 33 |
-| 20 | US | single | 8.47 | 7.06 | 0.84 | 42 | 9 |
-| 20 | US | silent_unweighted | 14.7 | 4.36 | 1.34 | 0 | 39 |
-| 20 | US | silent_weighted | 8.47 | 7.06 | 0.84 | 42 | 9 |
-| 20 | US | debate | 8.47 | 7.06 | 0.84 | 42 | 9 |
-| 20 | CRYPTO | single | 22.38 | 23.68 | 0.86 | 147 | 24 |
-| 20 | CRYPTO | silent_unweighted | 34.06 | 21.69 | 1.07 | 168 | 15 |
-| 20 | CRYPTO | silent_weighted | 31.55 | 18.68 | 1.09 | 147 | 23 |
-| 20 | CRYPTO | debate | 31.55 | 18.68 | 1.09 | 147 | 23 |
+| 1 | US | single | 16.31 | 9.76 | 1.22 | 4 | 3 |
+| 1 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
+| 1 | US | silent_weighted | 14.56 | 9.76 | 1.1 | 4 | 4 |
+| 1 | US | debate | 14.56 | 9.76 | 1.1 | 4 | 4 |
+| 1 | CRYPTO | single | 55.71 | 25.81 | 1.32 | 30 | 30 |
+| 1 | CRYPTO | silent_unweighted | 25.31 | 22.69 | 0.75 | 34 | 39 |
+| 1 | CRYPTO | silent_weighted | 42.17 | 28.31 | 1.1 | 32 | 32 |
+| 1 | CRYPTO | debate | 42.17 | 28.31 | 1.1 | 32 | 32 |
+| 3 | US | single | 15.51 | 9.76 | 1.17 | 8 | 3 |
+| 3 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
+| 3 | US | silent_weighted | 13.76 | 9.76 | 1.05 | 8 | 4 |
+| 3 | US | debate | 13.76 | 9.76 | 1.05 | 8 | 4 |
+| 3 | CRYPTO | single | 54.39 | 26.39 | 1.32 | 56 | 26 |
+| 3 | CRYPTO | silent_unweighted | 26.26 | 28.7 | 0.77 | 64 | 35 |
+| 3 | CRYPTO | silent_weighted | 31.26 | 31.85 | 0.91 | 60 | 28 |
+| 3 | CRYPTO | debate | 31.26 | 31.85 | 0.91 | 60 | 28 |
+| 5 | US | single | 15.36 | 10.1 | 1.16 | 12 | 3 |
+| 5 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
+| 5 | US | silent_weighted | 13.61 | 10.1 | 1.04 | 12 | 4 |
+| 5 | US | debate | 13.61 | 10.1 | 1.04 | 12 | 4 |
+| 5 | CRYPTO | single | 35.69 | 27.78 | 1.04 | 78 | 25 |
+| 5 | CRYPTO | silent_unweighted | 26.34 | 26.91 | 0.81 | 90 | 29 |
+| 5 | CRYPTO | silent_weighted | 15.97 | 32.79 | 0.6 | 84 | 27 |
+| 5 | CRYPTO | debate | 15.97 | 32.79 | 0.6 | 84 | 27 |
+| 10 | US | single | 8.76 | 12.59 | 0.73 | 22 | 3 |
+| 10 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
+| 10 | US | silent_weighted | 8.76 | 12.59 | 0.73 | 22 | 3 |
+| 10 | US | debate | 8.76 | 12.59 | 0.73 | 22 | 3 |
+| 10 | CRYPTO | single | -0.23 | 25.86 | 0.14 | 119 | 24 |
+| 10 | CRYPTO | silent_unweighted | 5.21 | 22.04 | 0.32 | 119 | 28 |
+| 10 | CRYPTO | silent_weighted | -0.23 | 25.86 | 0.14 | 119 | 24 |
+| 10 | CRYPTO | debate | -0.23 | 25.86 | 0.14 | 119 | 24 |
+| 20 | US | single | 8.08 | 11.17 | 0.7 | 42 | 3 |
+| 20 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
+| 20 | US | silent_weighted | 8.08 | 11.17 | 0.7 | 42 | 3 |
+| 20 | US | debate | 8.08 | 11.17 | 0.7 | 42 | 3 |
+| 20 | CRYPTO | single | 30.69 | 17.16 | 1.03 | 147 | 15 |
+| 20 | CRYPTO | silent_unweighted | 30.34 | 21.69 | 0.98 | 168 | 15 |
+| 20 | CRYPTO | silent_weighted | 30.69 | 17.16 | 1.03 | 147 | 15 |
+| 20 | CRYPTO | debate | 30.69 | 17.16 | 1.03 | 147 | 15 |
 
 ## 3. Current debate rules (unchanged)
 
@@ -111,9 +109,9 @@ Challenge direction (both targets): CRYPTO to US 4, US to CRYPTO 2. The two targ
 
 **Mechanics test.** `tests/unit/test_debate_changes_action.py` builds US = BUY (volatility about 2.45, under the 2.5 risk veto) against CRYPTO = SELL (volatility above 2.0). Silent-weighted gives BUY, debate gives HOLD, both risk-approved. It passes, so the plumbing works. The data had to be built to meet the thresholds. **Rules not changed.**
 
-## 5. HOLD conflict (awaiting decision, nothing implemented)
+## 5. HOLD conflict (option B adopted)
 
-The simulator closes the position on any HOLD; protocol.md section 10 says consensus HOLD keeps it.
+Before the change the simulator closed the position on any HOLD; protocol.md section 10 says consensus HOLD keeps it.
 
 - **Option A:** keep the code, amend protocol.md.
 - **Option B:** follow the protocol. HOLD keeps the position; drawdown breach and cool-off still flatten. A volatility override then also keeps the position.
@@ -129,7 +127,7 @@ Option B was measured by patching the simulator in memory (cool-off 5, not re-tu
 | CRYPTO | silent_unweighted | 71.51 -> 26.34 | 25.76 -> 26.91 | 1.53 -> 0.81 | 52.0 -> 51.2 | 29 -> 29 |
 | CRYPTO | silent_weighted = debate | 10.39 -> 15.97 | 35.13 -> 32.79 | 0.47 -> 0.60 | 34.9 -> 45.2 | 39 -> 27 |
 
-**Recommendation: B.** It matches the written protocol and stops "no conviction" from being traded as "sell". It is not better on results: they are mixed, and US drawdown nearly doubles for two rows. If B is adopted, the cool-off grid must be re-run, since 5 was selected under A.
+**Decision: B**, implemented, for consistency with the protocol rather than for results. The table above is the comparison at cool-off 5; section 2 has the re-run grid, and validation_experiment.md the current numbers at cool-off 1.
 
 ## 6. Separate observation (not fixed)
 

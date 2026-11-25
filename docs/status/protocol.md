@@ -161,13 +161,13 @@ Three distinct behaviours after the `RiskLayer.evaluate` call:
 
 | Scenario | `RiskStatus` | `veto_source` | Simulator behaviour |
 |---|---|---|---|
-| Consensus HOLD | `APPROVED` | `""` | Keep current position; no trade. |
+| Consensus HOLD or ABSTAIN | `APPROVED` | `""` | Keep current position; no trade. |
 | Drawdown breach | `OVERRIDDEN` | `"drawdown"` | Flatten position (force close); block new entries for `DRAWDOWN_COOLOFF_DAYS` more days. |
 | Volatility breach | `OVERRIDDEN` | `"volatility"` | Override BUY/SELL to HOLD; no position change forced. |
 
 **Cool-off re-arm rule:**  
 On a drawdown breach day the replay simulator sets `cooloff_remaining = drawdown_cooloff_days`
-(default: `DRAWDOWN_COOLOFF_DAYS = 5`, in `settings.py`).  On each subsequent day while
+(default: `DRAWDOWN_COOLOFF_DAYS = 1`, in `settings.py`).  On each subsequent day while
 `cooloff_remaining > 0`, the final action is overridden to HOLD, drawdown is not
 re-evaluated, and the counter is decremented.  When it reaches 0 the breaker re-arms:
 **the equity peak is rebased to current equity** and normal signals resume.  The 5%
@@ -177,7 +177,7 @@ drawdown over a run can exceed 5% through repeated breaches.
 Before this fix the peak was never reset, so the breaker re-tripped every day, reset the
 counter, and stayed locked for the rest of the run.
 
-`DRAWDOWN_COOLOFF_DAYS = 5` was chosen from {1, 3, 5, 10, 20} on the validation split
+`DRAWDOWN_COOLOFF_DAYS = 1` was chosen from {1, 3, 5, 10, 20} on the validation split
 (2024) only, by highest mean Sharpe over all four modes and both targets. See
 `breaker_and_debate.md` for every value tried.
 

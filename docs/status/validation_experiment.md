@@ -10,14 +10,14 @@
 
 | Target | Mode | Return(%) | 95% CI | MaxDD(%) | Sharpe | HitRate(%) | Exposure(%) | Trades | Turnover | Vetoes | RunID |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| US | SINGLE | +15.14 | [-7.76, +41.55] | 5.61 | 1.34 | 66.7 | 87.3 | 9 | 19.87x | 12 | — |
-| US | SILENT_UW | +14.70 | [-7.02, +40.10] | 4.36 | 1.34 | 64.1 | 69.0 | 39 | 86.65x | 0 | — |
-| US | SILENT_W | +15.14 | [-7.76, +41.55] | 5.61 | 1.34 | 66.7 | 87.3 | 9 | 19.87x | 12 | — |
-| US | DEBATE | +15.14 | [-7.76, +41.55] | 5.61 | 1.34 | 66.7 | 87.3 | 9 | 19.87x | 12 | — |
-| CRYPTO | SINGLE | +19.20 | [-35.67, +131.28] | 29.96 | 0.70 | 38.5 | 36.1 | 39 | 84.49x | 66 | — |
-| CRYPTO | SILENT_UW | +71.51 | [-19.54, +270.41] | 25.76 | 1.53 | 27.6 | 52.0 | 29 | 70.91x | 84 | — |
-| CRYPTO | SILENT_W | +10.39 | [-40.30, +112.63] | 35.13 | 0.47 | 35.9 | 34.9 | 39 | 80.54x | 72 | — |
-| CRYPTO | DEBATE | +10.39 | [-40.30, +112.63] | 35.13 | 0.47 | 35.9 | 34.9 | 39 | 80.54x | 72 | — |
+| US | SINGLE | +16.31 | [-11.00, +47.58] | 9.76 | 1.22 | 100.0 | 97.2 | 3 | 6.42x | 4 | — |
+| US | SILENT_UW | +13.81 | [-8.41, +38.32] | 4.91 | 1.26 | 62.2 | 70.6 | 37 | 82.66x | 2 | — |
+| US | SILENT_W | +14.56 | [-12.19, +45.28] | 9.76 | 1.10 | 50.0 | 96.8 | 4 | 8.47x | 4 | — |
+| US | DEBATE | +14.56 | [-12.19, +45.28] | 9.76 | 1.10 | 50.0 | 96.8 | 4 | 8.47x | 4 | — |
+| CRYPTO | SINGLE | +55.71 | [-28.15, +247.34] | 25.81 | 1.32 | 40.0 | 54.4 | 30 | 75.58x | 30 | — |
+| CRYPTO | SILENT_UW | +25.31 | [-43.24, +181.79] | 22.69 | 0.75 | 25.6 | 64.3 | 39 | 89.67x | 34 | — |
+| CRYPTO | SILENT_W | +42.17 | [-33.94, +214.61] | 28.31 | 1.10 | 37.5 | 54.0 | 32 | 75.43x | 32 | — |
+| CRYPTO | DEBATE | +42.17 | [-33.94, +214.61] | 28.31 | 1.10 | 37.5 | 54.0 | 32 | 75.43x | 32 | — |
 
 ## 2. Benchmarks
 
@@ -36,14 +36,14 @@ Random = long each day with probability equal to the mode's exposure, 200 seeds.
 
 | Target | Mode | Exposure(%) | Mode return(%) | B&H×Exposure(%) | Matched random mean±std [min, max] |
 |---|---|---|---|---|---|
-| US | SINGLE | 87.3 | +15.14 | +21.42 | +16.09±5.33 [+1.16, +28.01] |
-| US | SILENT_UW | 69.0 | +14.70 | +16.94 | +8.32±6.24 [-5.91, +23.37] |
-| US | SILENT_W | 87.3 | +15.14 | +21.42 | +16.09±5.33 [+1.16, +28.01] |
-| US | DEBATE | 87.3 | +15.14 | +21.42 | +16.09±5.33 [+1.16, +28.01] |
-| CRYPTO | SINGLE | 36.1 | +19.20 | +39.25 | +11.86±29.84 [-46.38, +150.45] |
-| CRYPTO | SILENT_UW | 52.0 | +71.51 | +56.50 | +25.33±34.89 [-31.65, +109.18] |
-| CRYPTO | SILENT_W | 34.9 | +10.39 | +37.96 | +10.73±29.31 [-42.01, +150.45] |
-| CRYPTO | DEBATE | 34.9 | +10.39 | +37.96 | +10.73±29.31 [-42.01, +150.45] |
+| US | SINGLE | 97.2 | +16.31 | +23.85 | +21.91±2.73 [+15.72, +31.98] |
+| US | SILENT_UW | 70.6 | +13.81 | +17.33 | +8.84±6.07 [-4.12, +24.80] |
+| US | SILENT_W | 96.8 | +14.56 | +23.75 | +21.70±2.87 [+13.94, +31.98] |
+| US | DEBATE | 96.8 | +14.56 | +23.75 | +21.70±2.87 [+13.94, +31.98] |
+| CRYPTO | SINGLE | 54.4 | +55.71 | +59.09 | +27.84±34.57 [-34.77, +145.99] |
+| CRYPTO | SILENT_UW | 64.3 | +25.31 | +69.87 | +41.64±41.23 [-33.07, +197.89] |
+| CRYPTO | SILENT_W | 54.0 | +42.17 | +58.66 | +26.91±34.59 [-38.57, +145.99] |
+| CRYPTO | DEBATE | 54.0 | +42.17 | +58.66 | +26.91±34.59 [-38.57, +145.99] |
 
 ## 3. Debate vs Silent-Weighted — Change Analysis
 
@@ -67,10 +67,10 @@ HOLD actions are excluded from scoring (no directional conviction).
 
 ## 5. Known Limitations (read before citing)
 
-- The cool-off length (5 days) was selected on this same 2024 window, so these results are optimistic. See breaker_and_debate.md.
+- The cool-off length (1 day) was selected on this same 2024 window, so these results are optimistic. See breaker_and_debate.md.
 - The drawdown peak is rebased at each re-arm, so total drawdown can exceed the 5% limit.
-- A HOLD decision closes any open position in the simulator. protocol.md section 10 says consensus HOLD keeps it. Not changed.
-- DEBATE equals SILENT_W on every day: no debate changed a stance. SINGLE matches them on US but not on CRYPTO. See breaker_and_debate.md.
+- A HOLD decision keeps the open position (protocol.md section 10); only a drawdown breach or cool-off flattens it.
+- DEBATE equals SILENT_W on every day: no debate changed a stance. See breaker_and_debate.md.
 - One year, two assets; the bootstrap intervals are wide and include zero. No mode is shown to be better.
 - Section 3 compares post-risk final actions.
 - No parameter other than the cool-off length was selected here.

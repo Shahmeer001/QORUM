@@ -433,8 +433,10 @@ class BarByBarSimulator:
                 target_pos = 1
             elif final_action == Action.SELL:
                 target_pos = -1 if allow_short else 0
-            else:  # HOLD or ABSTAIN
+            elif veto_source == "drawdown" or in_cooloff:  # breaker flattens
                 target_pos = 0
+            else:  # HOLD or ABSTAIN keeps the position (protocol.md section 10)
+                target_pos = current_pos
 
             # 6. Execution Fills:
             # - SPY: fills at NEXT US trading day's open

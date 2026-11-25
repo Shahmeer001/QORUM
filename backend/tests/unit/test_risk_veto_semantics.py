@@ -242,3 +242,29 @@ def test_breaker_re_arms_on_experiment_code_path(tmp_path):
     )
     assert result.risk_veto_count == 3  # breach day + 2 cool-off days
     assert result.daily_decisions[-1].position_held == 1
+
+
+def test_consensus_hold_keeps_open_position_in_simulator(tmp_path):
+    """protocol.md section 10: BUY then HOLD stays long; no early round trip."""
+    from app.agents.brains.fake_brain import FakeBrain
+    from app.domain.enums import Mode
+    from app.simulator.replay_simulator import BarByBarSimulator
+
+    class _BuyThenHold(FakeBrain):
+        def recommend(self, state, candles, knowledge):
+            action = Action.BUY if candles[-1].close == 100 else Action.HOLD
+            return action, 70.0, "scripted", []
+
+    spy_path, btc_path = _write_fixtures(tmp_path, [100, 101, 101, 101, 101])
+
+    class _Sim(BarByBarSimulator):
+        TEST_START = "2025-01-06"
+        TEST_END = "2025-01-10"
+
+    result = _Sim(spy_path=spy_path, btc_path=btc_path).run_simulation(
+        target_market="US", mode=Mode.SILENT_WEIGHTED, max_vol=99.0,
+        brain=_BuyThenHold(Action.BUY),
+    )
+    assert [d.final_action for d in result.daily_decisions][1:] == [Action.HOLD] * 4
+    assert [d.position_held for d in result.daily_decisions] == [1] * 5
+    assert len(result.trades) == 1  # only the final bar close-out
