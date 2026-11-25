@@ -44,8 +44,19 @@ DRAWDOWN_COOLOFF_DAYS = 10
 RSI_PERIOD = 14
 RSI_BUY_ZONE = (20.0, 30.0)
 RSI_SELL_ZONE = (70.0, 80.0)
-SAME_TOLERANCE = 0.00025       # +-0.025% tolerance for 'S' candle
-PATTERN_LENGTH = 3             # 3 candles (27 possible patterns: U-S-D combinations)
+RSI_BUY_THRESHOLD = 30.0      # R1/R4/R5: RSI below this → BUY signal
+RSI_SELL_THRESHOLD = 70.0     # R1/R4/R5: RSI above this → SELL signal
+SAME_TOLERANCE = 0.00025      # +-0.025% tolerance for 'S' candle
+PATTERN_LENGTH = 3            # 3 candles (27 possible patterns: U-S-D combinations)
+
+# MACD parameters (R2, R4, R5) — standard (12, 26, 9)
+MACD_FAST_PERIOD = 12
+MACD_SLOW_PERIOD = 26
+MACD_SIGNAL_PERIOD = 9
+
+# Bollinger Bands parameters (R3) — standard (20, 2 std)
+BOLLINGER_PERIOD = 20
+BOLLINGER_NSTD = 2.0
 
 # Modes
 VALID_MODES = ["single", "silent", "silent_unweighted", "silent_weighted", "debate"]
