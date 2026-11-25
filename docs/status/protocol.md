@@ -276,3 +276,12 @@ opening 2024-12-31 23:00 UTC). Both outputs were identical to `knowledge/us.json
 The script writes `docs/status/FINAL_TEST.lock` before running and refuses to run if it
 exists or if any frozen file differs from the table in section 3. Unit tests of the data
 adapters do read candles dated inside the test window; they compute no returns or decisions.
+
+---
+
+## 14. Commits After the Tag `rules-freeze-v1`
+
+| Commit | Change | Why the frozen results are unaffected |
+|---|---|---|
+| `317e0e0` | `run_wp4_experiment.py` limited to 2024, one new test, protocol sections 2, 7, 8, 9, 13 | No file in the section 3 table changed. |
+| the commit adding this section | This list | Documentation only. |
