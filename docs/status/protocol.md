@@ -167,7 +167,7 @@ Three distinct behaviours after the `RiskLayer.evaluate` call:
 
 **Cool-off re-arm rule:**  
 On a drawdown breach day the replay simulator sets `cooloff_remaining = drawdown_cooloff_days`
-(default: `DRAWDOWN_COOLOFF_DAYS = 1`, in `settings.py`).  On each subsequent day while
+(per target: `DRAWDOWN_COOLOFF_DAYS_BY_TARGET`, US 5 and CRYPTO 20, in `settings.py`).  On each subsequent day while
 `cooloff_remaining > 0`, the final action is overridden to HOLD, drawdown is not
 re-evaluated, and the counter is decremented.  When it reaches 0 the breaker re-arms:
 **the equity peak is rebased to current equity** and normal signals resume.  The 5%

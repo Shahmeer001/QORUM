@@ -227,6 +227,8 @@ def run_random_baseline(sim: ValidationSimulator, target: str,
             else:
                 tgt_pos = 1 if rng.random() < p_long else 0
             exec_raw, curr_cl = prices[i]
+            fills_after_mark = target == "US" and i + 1 < n_days
+            book_before_fill = (cash, units, pos)
 
             if tgt_pos != pos:
                 if pos == 1:
@@ -245,8 +247,9 @@ def run_random_baseline(sim: ValidationSimulator, target: str,
                     cash -= (en + ec); tot_vol += en
                     efill = ef; etime = d_str; pos = 1
 
-            eq = (cash + units * curr_cl) if pos == 1 else cash
-            if pos: days_exp += 1
+            m_cash, m_units, m_pos = book_before_fill if fills_after_mark else (cash, units, pos)
+            eq = (m_cash + m_units * curr_cl) if m_pos == 1 else m_cash
+            if m_pos: days_exp += 1
             equity.append(EquityPoint(t=d_str, v=round(eq, 2)))
 
         perf = compute_full_metrics(trades, equity, n_days, days_exp, tot_vol, INITIAL_CAPITAL)
@@ -628,7 +631,7 @@ def _write_report(
         "",
         '## 5. Known Limitations (read before citing)',
         '',
-        '- The cool-off length (1 day) was selected on this same 2024 window, so these results are optimistic. See breaker_and_debate.md.',
+        '- The cool-off lengths (US 5 days, CRYPTO 20 days) were selected on this same 2024 window, so these results are optimistic. See breaker_and_debate.md.',
         '- The drawdown peak is rebased at each re-arm, so total drawdown can exceed the 5% limit.',
         '- A HOLD decision keeps the open position (protocol.md section 10); only a drawdown breach or cool-off flattens it.',
         '- DEBATE equals SILENT_W on every day: no debate changed a stance. See breaker_and_debate.md.',

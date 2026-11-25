@@ -268,3 +268,25 @@ def test_consensus_hold_keeps_open_position_in_simulator(tmp_path):
     assert [d.final_action for d in result.daily_decisions][1:] == [Action.HOLD] * 4
     assert [d.position_held for d in result.daily_decisions] == [1] * 5
     assert len(result.trades) == 1  # only the final bar close-out
+
+
+@pytest.mark.parametrize("max_vol, max_dd, held_after", [(99.0, 5.0, 0), (2.0, 99.0, 1)])
+def test_veto_on_open_position(tmp_path, max_vol, max_dd, held_after):
+    """Option B: a drawdown breach flattens; a volatility override keeps the position."""
+    from app.agents.brains.fake_brain import FakeBrain
+    from app.domain.enums import Mode
+    from app.simulator.replay_simulator import BarByBarSimulator
+
+    spy_path, btc_path = _write_fixtures(tmp_path, [100, 100, 90, 90])
+
+    class _Sim(BarByBarSimulator):
+        TEST_START = "2025-01-06"
+        TEST_END = "2025-01-09"
+
+    result = _Sim(spy_path=spy_path, btc_path=btc_path).run_simulation(
+        target_market="US", mode=Mode.SILENT_WEIGHTED, max_vol=max_vol, max_dd=max_dd,
+        brain=FakeBrain(Action.BUY),
+    )
+    day3 = result.daily_decisions[2]
+    assert day3.risk_status == RiskStatus.OVERRIDDEN
+    assert day3.position_held == held_after

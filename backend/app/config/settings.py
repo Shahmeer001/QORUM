@@ -38,7 +38,10 @@ DEFAULT_MAX_VOLATILITY = 2.5   # %
 DEFAULT_MAX_DRAWDOWN = 5.0     # %
 
 # Risk Cool-off (Item 1): days the drawdown breaker blocks new entries after a breach.
-DRAWDOWN_COOLOFF_DAYS = 1
+DRAWDOWN_COOLOFF_DAYS = 1  # fallback for markets not listed below
+# Chosen per target on the 2024 validation window: lowest mean max-drawdown across
+# the four modes (docs/status/protocol.md section 10).
+DRAWDOWN_COOLOFF_DAYS_BY_TARGET = {"US": 5, "CRYPTO": 20}
 
 # Signal & Pattern Analysis (must match research/04_pattern_stats.py)
 RSI_PERIOD = 14

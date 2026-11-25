@@ -31,7 +31,13 @@ from app.adapters.us_spy import USMarketAdapter
 from app.agents.brains.base import Brain
 from app.agents.market_agent import MarketAgent
 from app.board.memory_repo import MemoryBoardRepository
-from app.config.settings import DATA_CACHE_DIR, INITIAL_CAPITAL, get_us_close_utc
+from app.config.settings import (
+    DATA_CACHE_DIR,
+    DRAWDOWN_COOLOFF_DAYS,
+    DRAWDOWN_COOLOFF_DAYS_BY_TARGET,
+    INITIAL_CAPITAL,
+    get_us_close_utc,
+)
 from app.domain.enums import Action, DataStatus, Mode, RiskStatus, Role
 from app.domain.models import Candle, EquityPoint, Trade
 from app.modes.dispatch import run_mode
@@ -285,7 +291,12 @@ class BarByBarSimulator:
 
         us_adapter = USMarketAdapter(csv_path=self.spy_path)
         btc_adapter = BinanceBTCAdapter(csv_path=self.btc_path)
-        risk_layer = RiskLayer(stop_loss=stop_loss, max_volatility=max_vol, max_drawdown=max_dd)
+        risk_layer = RiskLayer(
+            stop_loss=stop_loss,
+            max_volatility=max_vol,
+            max_drawdown=max_dd,
+            drawdown_cooloff_days=DRAWDOWN_COOLOFF_DAYS_BY_TARGET.get(target, DRAWDOWN_COOLOFF_DAYS),
+        )
         if drawdown_cooloff_days is not None:
             risk_layer.drawdown_cooloff_days = drawdown_cooloff_days
 
@@ -468,6 +479,12 @@ class BarByBarSimulator:
                     exec_time_str = f"{d_str} 21:00:00+00:00"
                 current_close_price = float(closed_candles[-1].close)
 
+            # A US order fills at the NEXT day's open, i.e. after today's mark, so
+            # today's equity uses the book as it stands before that fill. CRYPTO
+            # (and the last US day) fill at the mark time, so they mark after it.
+            fills_after_mark = target == "US" and i + 1 < n_days
+            book_before_fill = (cash, units, current_pos)
+
             # 7. Position change & Trade Execution
             if target_pos != current_pos:
                 # Close existing position if any
@@ -547,21 +564,24 @@ class BarByBarSimulator:
                     current_pos = target_pos
 
             # 8. Mark-to-market daily equity tracking (Zero leverage, exact balance sheet)
-            if current_pos == 1:
-                daily_equity = cash + units * current_close_price
+            mark_cash, mark_units, mark_pos = (
+                book_before_fill if fills_after_mark else (cash, units, current_pos)
+            )
+            if mark_pos == 1:
+                daily_equity = mark_cash + mark_units * current_close_price
                 days_exposed += 1
-            elif current_pos == -1:
+            elif mark_pos == -1:
                 # Cash includes initial equity + short sale proceeds; liability is current buyback cost
-                daily_equity = cash - units * current_close_price
+                daily_equity = mark_cash - mark_units * current_close_price
                 days_exposed += 1
             else:
-                daily_equity = cash
+                daily_equity = mark_cash
 
             # Leverage audit: gross exposure (units * mark) must never exceed equity
             # by more than a tiny tolerance (the only overshoot is commission/slippage
             # reducing equity below gross). Proves no leverage and position <= 100%.
-            if current_pos != 0 and daily_equity > 0 and units > 0:
-                gross = units * current_close_price
+            if mark_pos != 0 and daily_equity > 0 and mark_units > 0:
+                gross = mark_units * current_close_price
                 max_gross_exposure_ratio = max(
                     max_gross_exposure_ratio, gross / daily_equity
                 )

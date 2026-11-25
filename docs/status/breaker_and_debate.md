@@ -8,70 +8,66 @@ The equity peak was never reset. After a breach the position is flat, so drawdow
 
 **Fix:** drawdown is not re-evaluated during cool-off, and the peak is rebased to current equity at re-arm. New test: `test_breaker_re_arms_on_experiment_code_path`.
 
-## 2. Cool-off grid (re-run after the HOLD change)
+## 2. Cool-off grid (after the HOLD change and the equity-marking fix)
 
-Selection rule unchanged: highest mean Sharpe over 4 modes x 2 targets. Under option B it picks **1 day** (previously 5).
+Criterion, written to protocol.md (commit 42d5a5c) before this run: per target, lowest mean max-drawdown across the four modes; ties go to the shorter cool-off. It replaces the mean-Sharpe rule.
+The grid had been seen under earlier code before the criterion was written, so the choice is not blind.
 
-| Cool-off days | Mean Sharpe | Mean return % |
-|---|---|---|
-| 1 (chosen) | 1.119 | 28.07 |
-| 3 | 1.055 | 25.00 |
-| 5 | 0.944 | 18.79 |
-| 10 | 0.524 | 5.58 |
-| 20 | 0.929 | 20.06 |
+| Target | Cool-off | single | unweighted | weighted | debate | Mean MaxDD % |
+|---|---|---|---|---|---|---|
+| US | 1 | 9.71 | 5.11 | 9.71 | 9.71 | 8.560 |
+| US | 3 | 9.71 | 5.11 | 9.71 | 9.71 | 8.560 |
+| US | 5 (chosen) | 9.49 | 5.11 | 9.49 | 9.49 | 8.395 |
+| US | 10 | 12.59 | 5.11 | 12.59 | 12.59 | 10.720 |
+| US | 20 | 11.17 | 5.11 | 11.17 | 11.17 | 9.655 |
+| CRYPTO | 1 | 25.81 | 22.69 | 28.31 | 28.31 | 26.280 |
+| CRYPTO | 3 | 26.39 | 28.70 | 31.85 | 31.85 | 29.698 |
+| CRYPTO | 5 | 27.78 | 26.91 | 32.79 | 32.79 | 30.067 |
+| CRYPTO | 10 | 25.86 | 22.04 | 25.86 | 25.86 | 24.905 |
+| CRYPTO | 20 (chosen) | 17.16 | 21.69 | 17.16 | 17.16 | 18.293 |
 
-**Crypto max drawdown by cool-off (%):**
+US 5 beats 1 and 3 by only 0.165 points. Every crypto mean is far above the 5% limit, because the peak is rebased at each re-arm.
 
-| Cool-off days | single | silent_unweighted | silent_weighted = debate |
-|---|---|---|---|
-| 1 | 25.81 | 22.69 | 28.31 |
-| 3 | 26.39 | 28.7 | 31.85 |
-| 5 | 27.78 | 26.91 | 32.79 |
-| 10 | 25.86 | 22.04 | 25.86 |
-| 20 | 17.16 | 21.69 | 17.16 |
-
-The selection rule ignores drawdown. Every crypto cell is far above the 5% limit, because the peak is rebased at each re-arm.
-
-**Full grid:**
+**Full results:**
 
 | Days | Target | Mode | Return % | MaxDD % | Sharpe | Vetoed days | Trades |
 |---|---|---|---|---|---|---|---|
-| 1 | US | single | 16.31 | 9.76 | 1.22 | 4 | 3 |
-| 1 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
-| 1 | US | silent_weighted | 14.56 | 9.76 | 1.1 | 4 | 4 |
-| 1 | US | debate | 14.56 | 9.76 | 1.1 | 4 | 4 |
+| 1 | US | single | 16.78 | 9.71 | 1.3 | 4 | 3 |
+| 1 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 1 | US | silent_weighted | 15.02 | 9.71 | 1.18 | 4 | 4 |
+| 1 | US | debate | 15.02 | 9.71 | 1.18 | 4 | 4 |
 | 1 | CRYPTO | single | 55.71 | 25.81 | 1.32 | 30 | 30 |
 | 1 | CRYPTO | silent_unweighted | 25.31 | 22.69 | 0.75 | 34 | 39 |
 | 1 | CRYPTO | silent_weighted | 42.17 | 28.31 | 1.1 | 32 | 32 |
 | 1 | CRYPTO | debate | 42.17 | 28.31 | 1.1 | 32 | 32 |
-| 3 | US | single | 15.51 | 9.76 | 1.17 | 8 | 3 |
-| 3 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
-| 3 | US | silent_weighted | 13.76 | 9.76 | 1.05 | 8 | 4 |
-| 3 | US | debate | 13.76 | 9.76 | 1.05 | 8 | 4 |
+| 3 | US | single | 15.97 | 9.71 | 1.25 | 8 | 3 |
+| 3 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 3 | US | silent_weighted | 14.22 | 9.71 | 1.13 | 8 | 4 |
+| 3 | US | debate | 14.22 | 9.71 | 1.13 | 8 | 4 |
 | 3 | CRYPTO | single | 54.39 | 26.39 | 1.32 | 56 | 26 |
 | 3 | CRYPTO | silent_unweighted | 26.26 | 28.7 | 0.77 | 64 | 35 |
 | 3 | CRYPTO | silent_weighted | 31.26 | 31.85 | 0.91 | 60 | 28 |
 | 3 | CRYPTO | debate | 31.26 | 31.85 | 0.91 | 60 | 28 |
-| 5 | US | single | 15.36 | 10.1 | 1.16 | 12 | 3 |
-| 5 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
-| 5 | US | silent_weighted | 13.61 | 10.1 | 1.04 | 12 | 4 |
-| 5 | US | debate | 13.61 | 10.1 | 1.04 | 12 | 4 |
+| 5 | US | single | 15.82 | 9.49 | 1.25 | 12 | 3 |
+| 5 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 5 | US | silent_weighted | 14.07 | 9.49 | 1.13 | 12 | 4 |
+| 5 | US | debate | 14.07 | 9.49 | 1.13 | 12 | 4 |
 | 5 | CRYPTO | single | 35.69 | 27.78 | 1.04 | 78 | 25 |
 | 5 | CRYPTO | silent_unweighted | 26.34 | 26.91 | 0.81 | 90 | 29 |
 | 5 | CRYPTO | silent_weighted | 15.97 | 32.79 | 0.6 | 84 | 27 |
 | 5 | CRYPTO | debate | 15.97 | 32.79 | 0.6 | 84 | 27 |
-| 10 | US | single | 8.76 | 12.59 | 0.73 | 22 | 3 |
-| 10 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
-| 10 | US | silent_weighted | 8.76 | 12.59 | 0.73 | 22 | 3 |
-| 10 | US | debate | 8.76 | 12.59 | 0.73 | 22 | 3 |
+| 10 | US | single | 9.2 | 12.59 | 0.79 | 22 | 3 |
+| 10 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 10 | US | silent_weighted | 9.2 | 12.59 | 0.79 | 22 | 3 |
+| 10 | US | debate | 9.2 | 12.59 | 0.79 | 22 | 3 |
 | 10 | CRYPTO | single | -0.23 | 25.86 | 0.14 | 119 | 24 |
 | 10 | CRYPTO | silent_unweighted | 5.21 | 22.04 | 0.32 | 119 | 28 |
 | 10 | CRYPTO | silent_weighted | -0.23 | 25.86 | 0.14 | 119 | 24 |
 | 10 | CRYPTO | debate | -0.23 | 25.86 | 0.14 | 119 | 24 |
-| 20 | US | single | 8.08 | 11.17 | 0.7 | 42 | 3 |
-| 20 | US | silent_unweighted | 13.81 | 4.91 | 1.26 | 2 | 37 |
-| 20 | US | silent_weighted | 8.08 | 11.17 | 0.7 | 42 | 3 |
-| 20 | US | debate | 8.08 | 11.17 | 0.7 | 42 | 3 |
+| 20 | US | single | 8.52 | 11.17 | 0.76 | 42 | 3 |
+| 20 | US | silent_unweighted | 14.27 | 5.11 | 1.47 | 2 | 37 |
+| 20 | US | silent_weighted | 8.52 | 11.17 | 0.76 | 42 | 3 |
+| 20 | US | debate | 8.52 | 11.17 | 0.76 | 42 | 3 |
 | 20 | CRYPTO | single | 30.69 | 17.16 | 1.03 | 147 | 15 |
 | 20 | CRYPTO | silent_unweighted | 30.34 | 21.69 | 0.98 | 168 | 15 |
 | 20 | CRYPTO | silent_weighted | 30.69 | 17.16 | 1.03 | 147 | 15 |
@@ -109,6 +105,18 @@ Challenge direction (both targets): CRYPTO to US 4, US to CRYPTO 2. The two targ
 
 **Mechanics test.** `tests/unit/test_debate_changes_action.py` builds US = BUY (volatility about 2.45, under the 2.5 risk veto) against CRYPTO = SELL (volatility above 2.0). Silent-weighted gives BUY, debate gives HOLD, both risk-approved. It passes, so the plumbing works. The data had to be built to meet the thresholds. **Rules not changed.**
 
+### Threshold reference (not applied)
+
+Replier volatility = std of the last 14 log returns of the agent's own candles at each decision cutoff, on the 501 decision days of the learning window (2022-2023).
+
+| Agent | 90th percentile | Learning max | Learning days > 2.4 | Current threshold | 2024 max |
+|---|---|---|---|---|---|
+| US (daily) | 1.82 | 2.35 | 0 | 2.4 | 1.54 |
+| CRYPTO (1-hour) | 0.96 | 3.12 | 1 | 2.4 | 2.31 |
+| Pooled | 1.63 | 3.12 | 1 | 2.4 | 2.31 |
+
+The two agents are on different scales, so one pooled threshold would treat them unequally. The threshold is unchanged.
+
 ## 5. HOLD conflict (option B adopted)
 
 Before the change the simulator closed the position on any HOLD; protocol.md section 10 says consensus HOLD keeps it.
@@ -127,8 +135,14 @@ Option B was measured by patching the simulator in memory (cool-off 5, not re-tu
 | CRYPTO | silent_unweighted | 71.51 -> 26.34 | 25.76 -> 26.91 | 1.53 -> 0.81 | 52.0 -> 51.2 | 29 -> 29 |
 | CRYPTO | silent_weighted = debate | 10.39 -> 15.97 | 35.13 -> 32.79 | 0.47 -> 0.60 | 34.9 -> 45.2 | 39 -> 27 |
 
-**Decision: B**, implemented, for consistency with the protocol rather than for results. The table above is the comparison at cool-off 5; section 2 has the re-run grid, and validation_experiment.md the current numbers at cool-off 1.
+**Decision: B**, implemented. It is chosen to match protocol.md, **not for returns**. The table above was measured at cool-off 5 and before the equity-marking fix; current numbers are in validation_experiment.md.
 
-## 6. Separate observation (not fixed)
+## 6. US equity marking bug (fixed)
 
-For US, the simulator marks a day-i position at day i's close although it fills at day i+1's open. Final return is unaffected; daily equity, MaxDD, Sharpe and possibly the drawdown breaker are. The size of the effect has not been measured.
+A US order decided on day i fills at day i+1's open, but day i's equity was marked with the new position at day i's close. A hand-built test (`tests/unit/test_equity_marking.py`) gave 9608.46 on day 0 where 10000 was expected. Equity and exposure now use the book held before that fill. The random baseline in the validation script had the same ordering and is fixed too. This also changed US returns, because return is measured from the first equity point (an earlier note saying final return was unaffected was wrong).
+
+CRYPTO shares the marking code, but its fill (open of the candle starting at the cutoff) happens at the mark time, so marking after the fill is correct.
+
+**Still open:**
+- `scripts/run_baselines.py` and `scripts/run_rule_baselines.py` have their own engines and were not checked by a test or changed; rule_baselines_validation.md may carry the same error.
+- Return % is measured from the first equity point, not initial capital. For CRYPTO that point already includes the first entry's costs, so those costs are left out of Return %.
