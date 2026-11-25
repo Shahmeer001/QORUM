@@ -22,6 +22,20 @@ Selection rule, fixed before the run: highest mean Sharpe over 4 modes x 2 targe
 
 The gaps between 3, 5, 10 and 20 are small; this does not show 5 is reliably best.
 
+**Crypto max drawdown by cool-off (%):**
+
+| Cool-off days | single | silent_unweighted | silent_weighted = debate |
+|---|---|---|---|
+| 1 | 27.40 | 20.39 | 28.75 |
+| 3 | 27.97 | 27.57 | 32.68 |
+| 5 (chosen) | 29.96 | 25.76 | 35.13 |
+| 10 | 26.20 | 18.80 | 26.42 |
+| 20 | 23.68 | 21.69 | 18.68 |
+
+The chosen value gives the largest silent_weighted drawdown in the grid. Every cell is far above the 5% limit, because the peak is rebased at each re-arm. The selection rule ignored drawdown.
+
+**Full grid:**
+
 | Days | Target | Mode | Return % | MaxDD % | Sharpe | Vetoed days | Trades |
 |---|---|---|---|---|---|---|---|
 | 1 | US | single | 11.14 | 8.58 | 0.9 | 4 | 10 |
@@ -67,22 +81,56 @@ The gaps between 3, 5, 10 and 20 are small; this does not show 5 is reliably bes
 
 ## 3. Current debate rules (unchanged)
 
-- **Challenge:** only if the opponent position differs from the challenger's and is not HOLD. Against BUY: challenger volatility > 2.0% or RSI > 70. Against SELL: challenger RSI < 35. Both use the challenger's own candles.
-- **Reply:** the challenged agent moves to HOLD only if its **own** volatility > 2.4%; otherwise it keeps its stance. The challenge content and evidence are not read.
-- **Final stance:** BUY becomes HOLD only if at least 2 board messages mention "volatility" or "rotation" and own volatility > 2.0%.
-- So only an agent's own volatility can change its position. The BUY challenge text says "volatility is elevated" even when RSI triggered it (see trace).
+All signals come from the agent's **own** last 100 candles (US: daily; CRYPTO: 1-hour). Volatility = std of the last 14 log returns, in %.
 
-## 4. Did debate change anything?
+**CHALLENGE** (round 1, A reviews B's opening message) requires all of:
+- B's opening position differs from A's, and B's is not HOLD; and
+- if B says BUY: A's volatility > 2.0 **or** A's RSI > 70; if B says SELL: A's RSI < 35.
 
-| Target | Days | Challenge days | Stance changes | Consensus differs from SILENT_W | Final action differs | Better | Worse |
+**REPLY** (compulsory, by B): B's stance changes only if **B's own volatility > 2.4**. It then becomes HOLD with confidence 58. Otherwise stance and confidence are kept. The challenge's content is not read.
+
+**FINAL** (round 2): BUY becomes HOLD (confidence 62) only if at least 2 board messages mention "volatility" or "rotation" **and** own volatility > 2.0.
+
+So debate can only turn a stance into HOLD, never BUY into SELL or HOLD into a trade. Disagreement alone, however strong, changes nothing. The BUY challenge text says "volatility is elevated" even when RSI triggered it.
+
+## 4. Diagnosis: why DEBATE equals SILENT_W (2024, 252 days)
+
+| Target | Days with disagreement | Days with a CHALLENGE | CHALLENGEs | REPLYs | Stance changes (reply / final) | Confidence changes | Consensus differs |
 |---|---|---|---|---|---|---|---|
-| US | 252 | 6 | 0 | 0 | 0 | 0 | 0 |
-| CRYPTO | 252 | 6 | 0 | 0 | 0 | 0 | 0 |
+| US | 133 | 6 | 6 | 6 | 0 / 0 | 0 | 0 |
+| CRYPTO | 133 | 6 | 6 | 6 | 0 / 0 | 0 | 0 |
 
-No day changed, so there are no better or worse days to score.
+Challenge direction (both targets): CRYPTO to US 4, US to CRYPTO 2. The two targets match because agent signals do not depend on the target; only vote weights do.
 
-## 5. Traced day (US target, 2024-04-04)
+| Agent volatility | Median | Max | Days > 2.0 | Days > 2.4 |
+|---|---|---|---|---|
+| US (daily bars) | 0.72 | 1.54 | 0 | 0 |
+| CRYPTO (1-hour bars) | 0.57 | 2.31 | 1 | 0 |
 
-```
-US 2024-04-04 consensus BUY final BUY risk Risk control approved BUY with volatility at 0.7%.
-```
+**Finding.** No agent's volatility ever exceeded 2.4 on a decision day, so a reply could not change a stance, and the final-stance rule had at most one eligible day. The rules never fire on 2024 data. The thresholds look like daily-scale numbers, while the CRYPTO agent measures hourly volatility (an inference from the code; no design note confirms the intent).
+
+**Mechanics test.** `tests/unit/test_debate_changes_action.py` builds US = BUY (volatility about 2.45, under the 2.5 risk veto) against CRYPTO = SELL (volatility above 2.0). Silent-weighted gives BUY, debate gives HOLD, both risk-approved. It passes, so the plumbing works. The data had to be built to meet the thresholds. **Rules not changed.**
+
+## 5. HOLD conflict (awaiting decision, nothing implemented)
+
+The simulator closes the position on any HOLD; protocol.md section 10 says consensus HOLD keeps it.
+
+- **Option A:** keep the code, amend protocol.md.
+- **Option B:** follow the protocol. HOLD keeps the position; drawdown breach and cool-off still flatten. A volatility override then also keeps the position.
+
+Option B was measured by patching the simulator in memory (cool-off 5, not re-tuned). Format A -> B:
+
+| Target | Mode | Return % | MaxDD % | Sharpe | Exposure % | Trades |
+|---|---|---|---|---|---|---|
+| US | single | 15.14 -> 15.36 | 5.61 -> 10.10 | 1.34 -> 1.16 | 87.3 -> 95.2 | 9 -> 3 |
+| US | silent_unweighted | 14.70 -> 13.81 | 4.36 -> 4.91 | 1.34 -> 1.26 | 69.0 -> 70.6 | 39 -> 37 |
+| US | silent_weighted = debate | 15.14 -> 13.61 | 5.61 -> 10.10 | 1.34 -> 1.04 | 87.3 -> 94.8 | 9 -> 4 |
+| CRYPTO | single | 19.20 -> 35.69 | 29.96 -> 27.78 | 0.70 -> 1.04 | 36.1 -> 47.2 | 39 -> 25 |
+| CRYPTO | silent_unweighted | 71.51 -> 26.34 | 25.76 -> 26.91 | 1.53 -> 0.81 | 52.0 -> 51.2 | 29 -> 29 |
+| CRYPTO | silent_weighted = debate | 10.39 -> 15.97 | 35.13 -> 32.79 | 0.47 -> 0.60 | 34.9 -> 45.2 | 39 -> 27 |
+
+**Recommendation: B.** It matches the written protocol and stops "no conviction" from being traded as "sell". It is not better on results: they are mixed, and US drawdown nearly doubles for two rows. If B is adopted, the cool-off grid must be re-run, since 5 was selected under A.
+
+## 6. Separate observation (not fixed)
+
+For US, the simulator marks a day-i position at day i's close although it fills at day i+1's open. Final return is unaffected; daily equity, MaxDD, Sharpe and possibly the drawdown breaker are. The size of the effect has not been measured.

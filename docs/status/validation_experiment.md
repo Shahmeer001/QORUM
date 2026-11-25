@@ -21,14 +21,29 @@
 
 ## 2. Benchmarks
 
-| Target | Benchmark | Return(%) | B&H×Exposure(%) | Entry Price | Exit Price |
+| Target | Benchmark | Return(%) | MaxDD(%) | Sharpe | Entry Price | Exit Price |
+|---|---|---|---|---|---|---|
+| US | Buy-and-Hold | +24.53 | 8.41 | 1.82 | 470.52 | 585.96 |
+| US | Always-Flat | +0.00 | 0.00 | 0.00 | — | — |
+| CRYPTO | Buy-and-Hold | +108.69 | 27.10 | 1.61 | 44810.66 | 93517.26 |
+| CRYPTO | Always-Flat | +0.00 | 0.00 | 0.00 | — | — |
+| US | Random uniform (mean±std, 200 seeds) | +0.45±6.13 [-13.77, +17.88] | — | — | — | — |
+| CRYPTO | Random uniform (mean±std, 200 seeds) | +8.72±26.40 [-48.08, +124.38] | — | — | — | — |
+
+### Per mode: same exposure
+
+Random = long each day with probability equal to the mode's exposure, 200 seeds.
+
+| Target | Mode | Exposure(%) | Mode return(%) | B&H×Exposure(%) | Matched random mean±std [min, max] |
 |---|---|---|---|---|---|
-| US | Buy-and-Hold | +24.53 | — | 470.52 | 585.96 |
-| CRYPTO | Buy-and-Hold | +108.69 | — | 44810.66 | 93517.26 |
-| US | Always-Flat | +0.00 | — | — | — |
-| CRYPTO | Always-Flat | +0.00 | — | — | — |
-| US | Random (mean±std, 200 seeds) | +0.45±6.13 [-13.77, +17.88] | — | — | — |
-| CRYPTO | Random (mean±std, 200 seeds) | +8.72±26.40 [-48.08, +124.38] | — | — | — |
+| US | SINGLE | 87.3 | +15.14 | +21.42 | +16.09±5.33 [+1.16, +28.01] |
+| US | SILENT_UW | 69.0 | +14.70 | +16.94 | +8.32±6.24 [-5.91, +23.37] |
+| US | SILENT_W | 87.3 | +15.14 | +21.42 | +16.09±5.33 [+1.16, +28.01] |
+| US | DEBATE | 87.3 | +15.14 | +21.42 | +16.09±5.33 [+1.16, +28.01] |
+| CRYPTO | SINGLE | 36.1 | +19.20 | +39.25 | +11.86±29.84 [-46.38, +150.45] |
+| CRYPTO | SILENT_UW | 52.0 | +71.51 | +56.50 | +25.33±34.89 [-31.65, +109.18] |
+| CRYPTO | SILENT_W | 34.9 | +10.39 | +37.96 | +10.73±29.31 [-42.01, +150.45] |
+| CRYPTO | DEBATE | 34.9 | +10.39 | +37.96 | +10.73±29.31 [-42.01, +150.45] |
 
 ## 3. Debate vs Silent-Weighted — Change Analysis
 
@@ -44,7 +59,8 @@ HOLD actions are excluded from scoring (no directional conviction).
 ## 4. Notes
 
 - Bootstrap CIs resample daily PnL% contributions (2000 iterations, seed=42).
-- Random-timing baseline: uniform BUY/SELL/HOLD per day, long/flat only, 200 seeds.
+- Random-timing baselines are long/flat. Matched random draws each day independently, so it trades more than the modes and pays more friction.
+- Buy-and-Hold return and curve include slippage but no commission; strategies pay both.
 - Uniform-random-when-triggered is documented in rule_baselines_validation.md as a simplification.
 - All fills use the same rules as BarByBarSimulator (SPY: next-open; BTC: first 1h candle at 21:00 UTC cutoff).
 - Veto counts are days overridden by volatility, drawdown breach or cool-off.

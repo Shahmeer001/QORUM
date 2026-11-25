@@ -182,9 +182,11 @@ def bootstrap_ci_return(equity: List[EquityPoint], n: int = N_BOOTSTRAP,
 # ---------------------------------------------------------------------------
 
 def run_random_baseline(sim: ValidationSimulator, target: str,
-                        n_seeds: int = N_RANDOM) -> dict:
+                        n_seeds: int = N_RANDOM,
+                        p_long: Optional[float] = None) -> dict:
     """
-    Uniform BUY/SELL/NONE per day, 200 seeds.
+    p_long=None: uniform BUY/SELL/HOLD per day. Otherwise long with probability
+    p_long each day (matches a mode's expected exposure). 200 seeds.
     Returns mean and std of pnl_pct across seeds.
     """
     target = target.upper()
@@ -196,6 +198,20 @@ def run_random_baseline(sim: ValidationSimulator, target: str,
     spy_by_date = {row["parsed_date"]: row for _, row in spy_df.iterrows()}
     pool = [Action.BUY, Action.SELL, Action.HOLD]
 
+    # Fill price and mark per day do not depend on the seed.
+    prices: List[Tuple[float, float]] = []
+    for i, d in enumerate(all_days):
+        if target == "US":
+            next_d = all_days[i + 1] if i + 1 < n_days else None
+            exec_raw = float(spy_by_date[next_d]["Open"]) if next_d else float(spy_by_date[d]["Close"])
+            curr_cl  = float(spy_by_date[d]["Close"])
+        else:
+            cutoff = get_us_close_utc(d.isoformat())
+            nxt = btc_df[btc_df["open_dt"] >= cutoff].head(1)
+            curr_cl = float(btc_df[btc_df["close_dt"] <= cutoff].iloc[-1]["Close"])
+            exec_raw = float(nxt.iloc[0]["Open"]) if len(nxt) else curr_cl
+        prices.append((exec_raw, curr_cl))
+
     pnl_list: List[float] = []
     for seed in range(n_seeds):
         rng = random.Random(seed + 11000)
@@ -206,19 +222,11 @@ def run_random_baseline(sim: ValidationSimulator, target: str,
 
         for i, d in enumerate(all_days):
             d_str = d.isoformat()
-            act = rng.choice(pool)
-            tgt_pos = 1 if act == Action.BUY else 0  # long/flat only
-
-            if target == "US":
-                next_d = all_days[i + 1] if i + 1 < n_days else None
-                exec_raw = float(spy_by_date[next_d]["Open"]) if next_d else float(spy_by_date[d]["Close"])
-                curr_cl  = float(spy_by_date[d]["Close"])
+            if p_long is None:
+                tgt_pos = 1 if rng.choice(pool) == Action.BUY else 0  # long/flat only
             else:
-                cutoff = get_us_close_utc(d_str)
-                nxt = btc_df[btc_df["open_dt"] >= cutoff].head(1)
-                exec_raw = float(nxt.iloc[0]["Open"]) if len(nxt) else \
-                           float(btc_df[btc_df["close_dt"] <= cutoff].iloc[-1]["Close"])
-                curr_cl = float(btc_df[btc_df["close_dt"] <= cutoff].iloc[-1]["Close"])
+                tgt_pos = 1 if rng.random() < p_long else 0
+            exec_raw, curr_cl = prices[i]
 
             if tgt_pos != pos:
                 if pos == 1:
@@ -251,6 +259,24 @@ def run_random_baseline(sim: ValidationSimulator, target: str,
         "min_pnl_pct":  round(float(arr.min()),  2),
         "max_pnl_pct":  round(float(arr.max()),  2),
     }
+
+
+def buy_and_hold_risk(sim: ValidationSimulator, target: str) -> Tuple[float, float]:
+    """(MaxDD%, Sharpe) of the buy-and-hold equity curve, same fills as the
+    benchmark return and the same metric code as the strategies."""
+    target = target.upper()
+    bh = sim.compute_buy_and_hold(target)
+    equity: List[EquityPoint] = []
+    for i, d in enumerate(sim.evaluation_days):
+        held = not (target == "US" and i == 0)  # US entry is the next day's open
+        value = INITIAL_CAPITAL
+        if held:
+            value *= sim._target_close_at(target, d) / bh.entry_fill_price
+        equity.append(EquityPoint(t=d.isoformat(), v=value))
+    equity[-1] = EquityPoint(t=equity[-1].t, v=INITIAL_CAPITAL * (1 + bh.return_pct / 100.0))
+    n = len(equity)
+    perf = compute_full_metrics([], equity, n, n, 0.0, INITIAL_CAPITAL)
+    return perf.max_drawdown_pct, perf.sharpe_ratio
 
 
 # ---------------------------------------------------------------------------
@@ -473,9 +499,13 @@ def main():
     random_baselines: Dict[str, dict] = {}
     for target in ["US", "CRYPTO"]:
         random_baselines[target] = run_random_baseline(sim, target)
+    matched: Dict[Tuple[str, str], dict] = {
+        (s.target, s.mode): run_random_baseline(sim, s.target, p_long=s.exposure / 100.0)
+        for s in summaries
+    }
 
     # 6. Write report
-    _write_report(summaries, change_results, random_baselines, sim, db_session)
+    _write_report(summaries, change_results, random_baselines, matched, sim, db_session)
 
     if db_session:
         db_session.close()
@@ -491,6 +521,7 @@ def _write_report(
     summaries: List[RunSummary],
     change_results: dict,
     random_baselines: dict,
+    matched: dict,
     sim: ValidationSimulator,
     db_session,
 ) -> None:
@@ -529,20 +560,38 @@ def _write_report(
         "",
         "## 2. Benchmarks",
         "",
-        "| Target | Benchmark | Return(%) | B&H×Exposure(%) | Entry Price | Exit Price |",
-        "|---|---|---|---|---|---|",
-        f"| US | Buy-and-Hold | {bh_us.return_pct:+.2f} | — |"
-        f" {bh_us.entry_fill_price:.2f} | {bh_us.exit_fill_price:.2f} |",
-        f"| CRYPTO | Buy-and-Hold | {bh_crypto.return_pct:+.2f} | — |"
-        f" {bh_crypto.entry_fill_price:.2f} | {bh_crypto.exit_fill_price:.2f} |",
-        f"| US | Always-Flat | +0.00 | — | — | — |",
-        f"| CRYPTO | Always-Flat | +0.00 | — | — | — |",
+        "| Target | Benchmark | Return(%) | MaxDD(%) | Sharpe | Entry Price | Exit Price |",
+        "|---|---|---|---|---|---|---|",
     ]
+    for target, bh in (("US", bh_us), ("CRYPTO", bh_crypto)):
+        dd, sharpe = buy_and_hold_risk(sim, target)
+        lines.append(
+            f"| {target} | Buy-and-Hold | {bh.return_pct:+.2f} | {dd:.2f} | {sharpe:.2f} |"
+            f" {bh.entry_fill_price:.2f} | {bh.exit_fill_price:.2f} |"
+        )
+        lines.append(f"| {target} | Always-Flat | +0.00 | 0.00 | 0.00 | — | — |")
     for target, rb in random_baselines.items():
         lines.append(
-            f"| {target} | Random (mean±std, {N_RANDOM} seeds) |"
+            f"| {target} | Random uniform (mean±std, {N_RANDOM} seeds) |"
             f" {rb['mean_pnl_pct']:+.2f}±{rb['std_pnl_pct']:.2f}"
-            f" [{rb['min_pnl_pct']:+.2f}, {rb['max_pnl_pct']:+.2f}] | — | — | — |"
+            f" [{rb['min_pnl_pct']:+.2f}, {rb['max_pnl_pct']:+.2f}] | — | — | — | — |"
+        )
+    lines += [
+        "",
+        "### Per mode: same exposure",
+        "",
+        f"Random = long each day with probability equal to the mode's exposure, {N_RANDOM} seeds.",
+        "",
+        "| Target | Mode | Exposure(%) | Mode return(%) | B&H×Exposure(%) |"
+        " Matched random mean±std [min, max] |",
+        "|---|---|---|---|---|---|",
+    ]
+    for s in summaries:
+        rb = matched[(s.target, s.mode)]
+        lines.append(
+            f"| {s.target} | {s.mode} | {s.exposure:.1f} | {s.pnl_pct:+.2f} | {s.bh_x_expo:+.2f} |"
+            f" {rb['mean_pnl_pct']:+.2f}±{rb['std_pnl_pct']:.2f}"
+            f" [{rb['min_pnl_pct']:+.2f}, {rb['max_pnl_pct']:+.2f}] |"
         )
 
     lines += [
@@ -568,7 +617,9 @@ def _write_report(
         "## 4. Notes",
         "",
         "- Bootstrap CIs resample daily PnL% contributions (2000 iterations, seed=42).",
-        "- Random-timing baseline: uniform BUY/SELL/HOLD per day, long/flat only, 200 seeds.",
+        "- Random-timing baselines are long/flat. Matched random draws each day independently,"
+        " so it trades more than the modes and pays more friction.",
+        "- Buy-and-Hold return and curve include slippage but no commission; strategies pay both.",
         "- Uniform-random-when-triggered is documented in rule_baselines_validation.md"
         " as a simplification.",
         "- All fills use the same rules as BarByBarSimulator (SPY: next-open;"
