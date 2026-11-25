@@ -6,13 +6,15 @@ The one counted run on the held-out test window (protocol.md sections 2, 3, 13).
 Refuses to run without --final-test, if the lock file exists, or if any frozen
 file differs from the hash table in protocol.md. The lock is written BEFORE the
 run, so a crashed run also locks; what to do then is a human decision, recorded
-as an erratum.
+as an erratum. The lock records start and finish status. Results are written once,
+at the end, through a temporary file that is renamed into place.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -55,8 +57,27 @@ def frozen_mismatches(protocol_text: str) -> List[str]:
     return [f for f in frozen_files() if f"| `{f}` | `{file_hash(f)}` |" not in protocol_text]
 
 
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def record_status(lock_path: Path, status: str) -> None:
+    with open(lock_path, "a", encoding="utf-8") as fh:
+        fh.write(f"final test {status}\n")
+
+
+def write_atomic(path: Path, text: str) -> None:
+    """Either the whole file appears at `path` or nothing changes there."""
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def acquire_lock(path: Path) -> None:
-    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    stamp = _now()
     try:
         with open(path, "x", encoding="utf-8") as fh:
             fh.write(f"final test started {stamp}\n")
@@ -159,7 +180,7 @@ def run_experiment(start: str, end: str, knowledge_dir: Path, thresholds_path: P
         "",
         *rules.result_table(rule_results),
     ]
-    out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_atomic(out_path, "\n".join(lines) + "\n")
     print(f"Report written to {out_path}")
 
 
@@ -177,7 +198,12 @@ def main(argv: Optional[List[str]] = None, lock_path: Path = LOCK_PATH) -> None:
         raise SystemExit("Refusing to run: files differ from protocol.md freeze table:\n  "
                          + "\n  ".join(changed))
     acquire_lock(lock_path)
-    run_experiment(TEST_START, TEST_END, BACKEND / "knowledge", THRESHOLDS_PATH, OUT_PATH)
+    try:
+        run_experiment(TEST_START, TEST_END, BACKEND / "knowledge", THRESHOLDS_PATH, OUT_PATH)
+    except BaseException as exc:  # includes Ctrl+C: always say how it ended
+        record_status(lock_path, f"FAILED {_now()}: {type(exc).__name__}: {exc}")
+        raise
+    record_status(lock_path, f"finished {_now()}: results written")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # QUORUM Evaluation Protocol
 **Project:** QUORUM — Governed Multi-Agent Decision Engine (FYP1)
-**Status:** Preliminary (FYP1) — rules frozen at tag `rules-freeze-v1`
+**Status:** Preliminary (FYP1) — rules frozen at tag `rules-freeze-v2`
 
 ---
 
@@ -35,7 +35,8 @@ to the test window.
 
 ## 3. Rules-Freeze Protocol
 
-The freeze is the git tag `rules-freeze-v1`, on the commit that contains this table.
+The freeze is the git tag `rules-freeze-v2`, on the commit that contains this table. It replaces
+`rules-freeze-v1`; see section 14.
 Hashes are SHA-256 with CRLF normalised to LF. `run_final_test.py` recomputes them and refuses
 to run on any difference. The data CSVs are not in git; their hashes are listed here.
 
@@ -116,7 +117,7 @@ to run on any difference. The data CSVs are not in git; their hashes are listed 
 | `backend/data_cache/spy_daily.csv` | `cf84eb64b842aa10198809ec147cfe3fef49c7fd9a19429a7a257daa6dd828e5` |
 | `backend/knowledge/crypto.json` | `ef0531ae152108fe30717c2b3136749f80de59bdcb86466d705657269c7f7fb8` |
 | `backend/knowledge/us.json` | `bf9acad6e3fc7b613fdb75e7696dd78ae4816a57f8367d5acb1584838d02e420` |
-| `backend/scripts/run_final_test.py` | `8e74419f3780f250e58815c8d4e48ecb6ee70690fc16b5ad1a7a5d67aba73064` |
+| `backend/scripts/run_final_test.py` | `1244d6451f5e869c7f98d11c88b29cc132f603b1c1de198fea466be7bbc072c3` |
 | `backend/scripts/run_rule_baselines.py` | `1af47b56ac3f54391b0b317aad77ea24845f893d0ba8aa977f5ebe21e9b69e43` |
 | `backend/scripts/run_validation_experiment.py` | `ad5e196204d3d5d8aa262e0934524f1330ba8a19af972992e93ec7a4be9e1acf` |
 
@@ -273,15 +274,21 @@ opening 2024-12-31 23:00 UTC). Both outputs were identical to `knowledge/us.json
 - (c) Bugs found after the test run are recorded as **errata** next to the results. The run
   is not silently repeated.
 
-The script writes `docs/status/FINAL_TEST.lock` before running and refuses to run if it
+The script writes `docs/status/FINAL_TEST.lock` (start, then finish or failure status) and
+writes results only at the end, through a renamed temporary file. If it fails for a non-result
+reason (a missing file, a path error), deleting the lock and rerunning is allowed, and **must** be
+recorded as an erratum with the reason. It refuses to run if the lock
 exists or if any frozen file differs from the table in section 3. Unit tests of the data
 adapters do read candles dated inside the test window; they compute no returns or decisions.
 
 ---
 
-## 14. Commits After the Tag `rules-freeze-v1`
+## 14. Changes Between and After the Freeze Tags
 
-| Commit | Change | Why the frozen results are unaffected |
+| Commit | Change | Effect on computed numbers |
 |---|---|---|
-| `317e0e0` | `run_wp4_experiment.py` limited to 2024, one new test, protocol sections 2, 7, 8, 9, 13 | No file in the section 3 table changed. |
-| the commit adding this section | This list | Documentation only. |
+| `317e0e0` (after v1) | `run_wp4_experiment.py` limited to 2024, one new test, protocol sections 2, 7, 8, 9, 13 | None: no file in the section 3 table changed. |
+| `ce31888` (after v1) | List of post-tag commits | None: documentation only. |
+| the commit tagged `rules-freeze-v2` | `run_final_test.py`: atomic results write, lock status; tests; its hash row | None: only how results are saved. A 2024 rehearsal gave identical tables before and after. |
+
+`rules-freeze-v1` remains in history. No test-window run was made under it.
