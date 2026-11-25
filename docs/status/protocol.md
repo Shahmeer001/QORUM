@@ -177,9 +177,15 @@ drawdown over a run can exceed 5% through repeated breaches.
 Before this fix the peak was never reset, so the breaker re-tripped every day, reset the
 counter, and stayed locked for the rest of the run.
 
-`DRAWDOWN_COOLOFF_DAYS = 1` was chosen from {1, 3, 5, 10, 20} on the validation split
-(2024) only, by highest mean Sharpe over all four modes and both targets. See
-`breaker_and_debate.md` for every value tried.
+**HOLD keeps the position.** The simulator was changed to match this section. The choice was
+made for consistency with this protocol, not for returns.
+
+**Cool-off selection criterion (written before the grid below is re-run):**
+for each target separately, choose from {1, 3, 5, 10, 20} the value with the lowest mean
+maximum drawdown across the four modes (single, silent_unweighted, silent_weighted, debate)
+on the validation window (2024). Ties go to the shorter cool-off. No return or Sharpe figure
+is used. This replaces the earlier mean-Sharpe rule. Values and results are in
+`breaker_and_debate.md`.
 
 ---
 
