@@ -2,7 +2,7 @@
 
 > **Preliminary (FYP1).** Knowledge learned on 2022-01-03 to 2023-12-31 only.
 > Test window (2025-01-01 to 2026-11-20) is held out.
-> No parameters were tuned to favour any mode.
+> Only the drawdown cool-off length was tuned (mode-neutral criterion).
 
 **Evaluation days:** 252  |  **Degraded days (excluded):** 114
 
@@ -10,14 +10,14 @@
 
 | Target | Mode | Return(%) | 95% CI | MaxDD(%) | Sharpe | HitRate(%) | Exposure(%) | Trades | Turnover | Vetoes | RunID |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| US | SINGLE | +4.60 | [-8.28, +18.11] | 5.51 | 0.73 | 33.3 | 29.8 | 3 | 6.34x | 170 | — |
+| US | SINGLE | +15.14 | [-7.76, +41.55] | 5.61 | 1.34 | 66.7 | 87.3 | 9 | 19.87x | 12 | — |
 | US | SILENT_UW | +14.70 | [-7.02, +40.10] | 4.36 | 1.34 | 64.1 | 69.0 | 39 | 86.65x | 0 | — |
-| US | SILENT_W | +4.60 | [-8.28, +18.11] | 5.51 | 0.73 | 33.3 | 29.8 | 3 | 6.34x | 170 | — |
-| US | DEBATE | +4.60 | [-8.28, +18.11] | 5.51 | 0.73 | 33.3 | 29.8 | 3 | 6.34x | 170 | — |
-| CRYPTO | SINGLE | -5.39 | [-15.01, +0.00] | 5.39 | -1.13 | 0.0 | 0.8 | 2 | 3.85x | 249 | — |
-| CRYPTO | SILENT_UW | -2.68 | [-21.34, +18.28] | 6.82 | -0.21 | 0.0 | 3.2 | 1 | 1.97x | 244 | — |
-| CRYPTO | SILENT_W | -5.39 | [-15.01, +0.00] | 5.39 | -1.13 | 0.0 | 0.8 | 2 | 3.85x | 249 | — |
-| CRYPTO | DEBATE | -5.39 | [-15.01, +0.00] | 5.39 | -1.13 | 0.0 | 0.8 | 2 | 3.85x | 249 | — |
+| US | SILENT_W | +15.14 | [-7.76, +41.55] | 5.61 | 1.34 | 66.7 | 87.3 | 9 | 19.87x | 12 | — |
+| US | DEBATE | +15.14 | [-7.76, +41.55] | 5.61 | 1.34 | 66.7 | 87.3 | 9 | 19.87x | 12 | — |
+| CRYPTO | SINGLE | +19.20 | [-35.67, +131.28] | 29.96 | 0.70 | 38.5 | 36.1 | 39 | 84.49x | 66 | — |
+| CRYPTO | SILENT_UW | +71.51 | [-19.54, +270.41] | 25.76 | 1.53 | 27.6 | 52.0 | 29 | 70.91x | 84 | — |
+| CRYPTO | SILENT_W | +10.39 | [-40.30, +112.63] | 35.13 | 0.47 | 35.9 | 34.9 | 39 | 80.54x | 72 | — |
+| CRYPTO | DEBATE | +10.39 | [-40.30, +112.63] | 35.13 | 0.47 | 35.9 | 34.9 | 39 | 80.54x | 72 | — |
 
 ## 2. Benchmarks
 
@@ -47,10 +47,14 @@ HOLD actions are excluded from scoring (no directional conviction).
 - Random-timing baseline: uniform BUY/SELL/HOLD per day, long/flat only, 200 seeds.
 - Uniform-random-when-triggered is documented in rule_baselines_validation.md as a simplification.
 - All fills use the same rules as BarByBarSimulator (SPY: next-open; BTC: first 1h candle at 21:00 UTC cutoff).
-- Risk veto counts include both volatility and drawdown overrides.
+- Veto counts are days overridden by volatility, drawdown breach or cool-off.
 
 ## 5. Known Limitations (read before citing)
 
-- **The drawdown breaker does not re-arm.** After a breach the position is closed, but the equity peak is not reset, so flat equity stays more than the limit below it and the breaker fires on every later day. This contradicts protocol.md section 10.
-- Because of this, SINGLE, SILENT_W and DEBATE results mostly reflect the period before the first breach. Identical returns do **not** show that the modes decide the same way, or that debate adds nothing.
-- Section 3 compares post-risk final actions, so differences in consensus during the locked period are hidden.
+- The cool-off length (5 days) was selected on this same 2024 window, so these results are optimistic. See breaker_and_debate.md.
+- The drawdown peak is rebased at each re-arm, so total drawdown can exceed the 5% limit.
+- A HOLD decision closes any open position in the simulator. protocol.md section 10 says consensus HOLD keeps it. Not changed.
+- DEBATE equals SILENT_W on every day: no debate changed a stance. SINGLE matches them on US but not on CRYPTO. See breaker_and_debate.md.
+- One year, two assets; the bootstrap intervals are wide and include zero. No mode is shown to be better.
+- Section 3 compares post-risk final actions.
+- No parameter other than the cool-off length was selected here.

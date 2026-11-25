@@ -215,8 +215,30 @@ def test_cooloff_re_arms_after_configured_days(tmp_path):
         brain=FakeBrain(Action.BUY),
     )
 
-    # Must have at least 2 trades: the veto-forced SELL and a later BUY re-entry.
-    buy_trades = [t for t in result.trades if t.side == Action.BUY]
-    assert len(buy_trades) >= 1, (
+    # The forced close of the first long is itself side=BUY, so one trade proves
+    # nothing: re-arming requires a SECOND round trip.
+    assert len(result.trades) >= 2, (
         f"Expected BUY re-entry after cool-off. Trades: {result.trades}"
     )
+
+
+def test_breaker_re_arms_on_experiment_code_path(tmp_path):
+    """Same call the validation experiment makes (run_simulation, no patching):
+    after one breach and the cool-off, the position is re-entered and vetoes stop."""
+    from app.agents.brains.fake_brain import FakeBrain
+    from app.domain.enums import Mode
+    from app.simulator.replay_simulator import BarByBarSimulator
+
+    closes = [100, 100, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90]
+    spy_path, btc_path = _write_fixtures(tmp_path, closes)
+
+    class _Sim(BarByBarSimulator):
+        TEST_START = "2025-01-06"
+        TEST_END = "2025-01-22"
+
+    result = _Sim(spy_path=spy_path, btc_path=btc_path).run_simulation(
+        target_market="US", mode=Mode.DEBATE, max_vol=99.0,
+        brain=FakeBrain(Action.BUY), drawdown_cooloff_days=2,
+    )
+    assert result.risk_veto_count == 3  # breach day + 2 cool-off days
+    assert result.daily_decisions[-1].position_held == 1

@@ -167,12 +167,19 @@ Three distinct behaviours after the `RiskLayer.evaluate` call:
 
 **Cool-off re-arm rule:**  
 On a drawdown breach day the replay simulator sets `cooloff_remaining = drawdown_cooloff_days`
-(default: `DRAWDOWN_COOLOFF_DAYS = 10`, in `settings.py`).  On each subsequent day while
-`cooloff_remaining > 0`, the final action is overridden to HOLD and the counter is
-decremented.  When it reaches 0 the breaker re-arms and normal signals resume.
+(default: `DRAWDOWN_COOLOFF_DAYS = 5`, in `settings.py`).  On each subsequent day while
+`cooloff_remaining > 0`, the final action is overridden to HOLD, drawdown is not
+re-evaluated, and the counter is decremented.  When it reaches 0 the breaker re-arms:
+**the equity peak is rebased to current equity** and normal signals resume.  The 5%
+limit is therefore measured from the last re-arm, not from the all-time peak, so total
+drawdown over a run can exceed 5% through repeated breaches.
 
-The parameter `DRAWDOWN_COOLOFF_DAYS = 10` was chosen as the initial value and may be
-tuned on the validation split (2024).
+Before this fix the peak was never reset, so the breaker re-tripped every day, reset the
+counter, and stayed locked for the rest of the run.
+
+`DRAWDOWN_COOLOFF_DAYS = 5` was chosen from {1, 3, 5, 10, 20} on the validation split
+(2024) only, by highest mean Sharpe over all four modes and both targets. See
+`breaker_and_debate.md` for every value tried.
 
 ---
 
