@@ -195,3 +195,22 @@ HOLD calls are **excluded** from accuracy updates. Rationale: HOLD carries no di
 conviction, so scoring it as correct (realised_return==0 is rare) or incorrect would add
 noise. Only BUY and SELL calls update the tracker. ABSTAIN and non-VALID calls are also
 excluded (see Part 0.1).
+
+---
+
+## 12. Debate volatility thresholds (written before the run that uses them)
+
+The fixed debate volatility thresholds (challenge > 2.0, reply > 2.4, final stance > 2.0) are
+replaced, for each agent, by that agent's **own 90th percentile** of its volatility measure
+(std of the last 14 log returns of its own candles at each decision cutoff) on the
+**learning window (2022-01-03 to 2023-12-31) only**. All three thresholds of an agent take
+that one value. The values are computed by `scripts/compute_debate_thresholds.py` and stored in
+`app/config/debate_thresholds.json`. RSI thresholds and the risk-layer limits are unchanged.
+
+**Reason:** the original numbers are daily-scale, while the CRYPTO agent measures hourly
+volatility.
+
+**Disclosure:** this was decided **after** seeing the validation (2024) result in which debate
+never changed a decision. It is therefore not a pre-registered rule, and 2024 debate results are
+not independent evidence for it. The original-threshold run is kept as an ablation. Nothing else
+is changed after seeing the new result.
